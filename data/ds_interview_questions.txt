@@ -576,7 +576,7 @@ Everything in a tensorflow is based on creating a computational graph.
 It has a network of nodes where each node operates, Nodes represent mathematical operations, and edges represent tensors.
 Since data flows in the form of a graph, it is also called a “DataFlow Graph.” 
 Q101. What are the differences between supervised and unsupervised learning? 
-Supervised Learning Unsupervised Learning Uses known and labeled data as input Uses unlabeled data as input Supervised learning has a feedback Unsupervised learning has no feedback mechanism mechanism Most commonly used supervised Most commonly used unsupervised learning algorithms are decision trees, learning algorithms are k-means logistic regression, and support vector clustering, hierarchical clustering, and machine apriori algorithm 
+Supervised Learning Unsupervised Learning Uses known and labeled data as input Supervised learning has a feedback mechanism Most commonly used supervised learning algorithms are decision trees, logistic regression, and support vector machine Uses unlabeled data as input Unsupervised learning has no feedback mechanism Most commonly used unsupervised learning algorithms are k-means clustering, hierarchical clustering, and apriori algorithm 
 102. How is logistic regression done? 
 Logistic regression measures the relationship between the dependent variable (our label of what we want to predict) and one or more independent variables (our features) by estimating probability using its underlying logistic function (sigmoid).
 The image shown below depicts how logistic regression works:
