@@ -3,7 +3,6 @@ import re
 import sys
 import requests
 import pdfplumber
-import pytesseract
 
 
 def save_pdf():
@@ -64,6 +63,19 @@ def extract_text():
 		sys.exit()
 
 
+def data_exploration():
+	file_size = os.path.getsize(interview_txt_path)
+	print(f"The size of the text file is {file_size} bytes.\n")
+	
+	n_lines = 45
+	with open(interview_txt_path, "r") as f:
+		lines = f.read().split("\n")[:n_lines]
+	
+	print("Here are the fist few lines of the text file:\n")
+	for line in lines:
+		print(line)
+
+
 if __name__ == "__main__":
 	pdfURL = "https://storage.googleapis.com/kaggle-forum-message-attachments/984081/16703/DS%20interview%20quESTIONS.pdf"
 	
@@ -82,4 +94,6 @@ if __name__ == "__main__":
 	with open(interview_txt_path, "w") as f:
 		f.write(lines)
 	
-	print("Successfully saved the text file!")
+	print("Successfully saved the text file!\n\n")
+	
+	data_exploration()
