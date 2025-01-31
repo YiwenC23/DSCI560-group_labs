@@ -34,5 +34,6 @@ def data_reformat(data):
 
 
 if __name__ == "__main__":
+	
 	connect_db()
 	stock_retrieve()
