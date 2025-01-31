@@ -21,8 +21,12 @@ def connect_db():
 
 def stock_retrieve():
 	try:
-		ticker = ["AAPL", "MSFT", "AMZN", "NVDA", "META", "TSLA"]
+		ticker = ["AAPL", "MSFT", "AMZN", "NVDA"]
 		data = yf.download(ticker, start="2000-01-01", end="2025-01-30", interval="1d")
+		#####
+		data = data.drop(1).reset_index(drop=True)
+		data.rename(columns={'Price':"Date"}, inplace=True)
+		#####
 		return data
 	except Exception as e:
 		print(e)
@@ -30,6 +34,7 @@ def stock_retrieve():
 
 
 def data_reformat(data):
+
 	data = pd.DataFrame(data)
 
 
