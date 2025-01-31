@@ -21,7 +21,7 @@ def connect_db():
 
 def stock_retrieve():
 	try:
-		ticker = ["AAPL", "MSFT", "AMZN", "NVDA", "GOOGL"]
+		ticker = ["AAPL", "MSFT", "AMZN", "NVDA", "META", "TSLA"]
 		data = yf.download(ticker, start="2000-01-01", end="2025-01-30", interval="1d")
 		return data
 	except Exception as e:
@@ -34,5 +34,5 @@ def data_reformat(data):
 
 
 if __name__ == "__main__":
-
+	connect_db()
 	stock_retrieve()
