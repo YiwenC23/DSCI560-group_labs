@@ -70,7 +70,7 @@ def stock_retrieve():
 #        dividends = aapl.dividends
 #        splits = aapl.splits
 #        actions = aapl.actions
-        
+        print("Stock data retrieved successfully.")
         return hist_data
     except Exception as e:
         print(e)
@@ -87,7 +87,7 @@ def insert_db(engine, data):
             if_exists="append",
             chunksize=1000
         )
-    
+        print("Stock data has successfully inserted into the database.")
     except Exception as e:
         print(f"Filed to insert data: {e}")
         sys.exit()
