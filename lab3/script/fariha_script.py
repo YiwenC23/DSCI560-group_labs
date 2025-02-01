@@ -20,7 +20,7 @@ session = Session()
 
 base = declarative_base()
 class portfolio(base):
-    __tablename__ = 'portfolio'
+    __tablename__ = 'stock_data'
     id = Column(Integer, primary_key=True)
     created_date = Column(DateTime, default=datetime.now)
     symbol =Column(String(10))
@@ -75,7 +75,7 @@ def removingstock(symbol):
         print ("error removing stock")
 
 def displayingpf():
-    portfolios = session.execute(text("SELECT * FROM portfolio"))
+    portfolios = session.execute(text("SELECT * FROM stock_data"))
     for stock in portfolios:
         print(f"Symbol:{stock.symbol}, Date: {stock.date},Created Date: {stock.created_date}, Open: {stock.open_price}, High: {stock.high_price}, Close: {stock.close_price},Low: {stock.low_price}, Volume: {stock.volume}")
 
