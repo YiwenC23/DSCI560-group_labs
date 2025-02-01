@@ -6,10 +6,6 @@ import pandas as pd
 import yfinance as yf
 from sqlalchemy import create_engine
 
-def query():
-	data = pd.read_sql("SELECT * FROM stock_data", my_db)
-	print(data)
-
 def missing_data(df):
     for column in df.columns:
             if df[column].isnull().sum() > 0:
@@ -41,8 +37,6 @@ if __name__ == "__main__":
     my_db = sqlalchemy.create_engine(f"mysql+pymysql://{db_user}:{db_password}@localhost/{db_name}")
 
     connection = my_db.connect()
-
-    query()
 
     stock_data = pd.read_sql_table('stock_data', connection)
     stock_data['date'] = pd.to_datetime(stock_data['date'])
