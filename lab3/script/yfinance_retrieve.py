@@ -2,6 +2,7 @@
 import sqlalchemy
 import pandas as pd
 import yfinance as yf
+from sqlalchemy import text
 
 
 def connect_db():
@@ -10,9 +11,10 @@ def connect_db():
         db_password = input("Please enter the password for the database: ")
         db_name = input("Please enter the database name: ")
         engine = sqlalchemy.create_engine(f"mysql+pymysql://{db_username}:{db_password}@localhost/{db_name}")
-        '''
+        
         with engine.connect() as conn:
-            conn.execute(" \
+            
+            conn.execute(text(" \
                 CREATE TABLE IF NOT EXISTS stock_data( \
                     date DATE NOT NULL, \
                     ticker VARCHAR(10) NOT NULL, \
@@ -23,17 +25,17 @@ def connect_db():
                     volume BIGINT, \
                     PRIMARY KEY (date, ticker) \
                     ); \
-            ")
-            
-            conn.execute(" \
+            "))
+            '''
+            conn.execute(text(" \
                 CREATE INDEX IF NOT EXISTS idx_ticker \
                 ON stock_data (ticker); \
-            ")
+            "))
             
-            conn.execute(" \
+            conn.execute(text(" \
                 CREATE INDEX IF NOT EXISTS idx_date \
                 ON stock_data (date); \
-            ")
+            "))
         '''
         print("Database connected successfully")
         return engine
