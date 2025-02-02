@@ -64,7 +64,7 @@ def stock_retrieve(tickers):
             ticker = yf.Ticker(i)
             
             # Get historical price data
-            tck_data = ticker.history(start="2024-01-01", end="2025-01-31", interval="1d")
+            tck_data = ticker.history(start="2025-01-15", end="2025-01-31", interval="1d")
             # Drop the last two columns
             tck_data = tck_data.iloc[:, :-2]
             # format the date to YYYY-MM-DD
@@ -135,7 +135,7 @@ def insert_db(engine, data):
 
 
 if __name__ == "__main__":
-    default_tickers = ["AAPL", "MSFT", "AMZN", "NVDA", "META", "TSLA"]
+    default_tickers = ["AAPL", "NVDA"]
     db_username = input("Please enter the username for the database: ")
     db_password = input("Please enter the password for the database: ")
     db_name = input("Please enter the database name: ")
