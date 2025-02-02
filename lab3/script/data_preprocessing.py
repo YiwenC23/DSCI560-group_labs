@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     stock_data = volatility(stock_data)
 
-    stock_data = moving_average(stock_data, 20)
+    stock_data = moving_average(stock_data, 5)
 
     stock_data = VWAP(stock_data)
 
