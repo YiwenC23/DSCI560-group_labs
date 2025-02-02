@@ -15,38 +15,38 @@ def connect_db(db_username=None, db_password=None, db_name=None):
         engine = sqlalchemy.create_engine(f"mysql+pymysql://{db_username}:{db_password}@localhost/{db_name}")
         
         with engine.connect() as conn:
-            conn.execute(text(" \
-                CREATE TABLE IF NOT EXISTS stock_data( \
-                    date DATE NOT NULL, \
-                    ticker VARCHAR(10) NOT NULL, \
-                    close DECIMAL(12, 4), \
-                    high DECIMAL(12, 4), \
-                    low DECIMAL(12, 4), \
-                    open DECIMAL(12, 4), \
-                    volume BIGINT, \
-                    PRIMARY KEY (date, ticker) \
-                    ); \
-            "))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS stock_data(
+                    date DATE NOT NULL,
+                    ticker VARCHAR(10) NOT NULL,
+                    close DECIMAL(12, 4),
+                    high DECIMAL(12, 4),
+                    low DECIMAL(12, 4),
+                    open DECIMAL(12, 4),
+                    volume BIGINT,
+                    PRIMARY KEY (date, ticker)
+                    );
+            """))
             
             # Check if the index already exists
-            check_ticker_index = conn.execute(text(" \
+            check_ticker_index = conn.execute(text("""
                             SELECT COUNT(1) indexExists \
-                                FROM INFORMATION_SCHEMA.STATISTICS \
-                                WHERE table_schema = 'dsci560' \
-                                    AND table_name = 'stock_data' \
-                                    AND index_name = 'idx_ticker';"))
+                                FROM INFORMATION_SCHEMA.STATISTICS
+                                WHERE table_schema = 'dsci560'
+                                    AND table_name = 'stock_data'
+                                    AND index_name = 'idx_ticker';"""))
             if check_ticker_index.fetchone()[0] == 0:
-                conn.execute(text("CREATE INDEX idx_ticker ON stock_data (ticker);"))
+                conn.execute(text("""CREATE INDEX idx_ticker ON stock_data (ticker);"""))
             
             # Check if the date index already exists
-            check_date_index = conn.execute(text(" \
+            check_date_index = conn.execute(text("""
                             SELECT COUNT(1) indexExists \
-                                FROM INFORMATION_SCHEMA.STATISTICS \
-                                WHERE table_schema = 'dsci560' \
-                                    AND table_name='stock_data' \
-                                    AND index_name='idx_date';"))
+                                FROM INFORMATION_SCHEMA.STATISTICS
+                                WHERE table_schema = 'dsci560'
+                                    AND table_name='stock_data'
+                                    AND index_name='idx_date';"""))
             if check_date_index.fetchone()[0] == 0:
-                conn.execute(text("CREATE INDEX idx_date ON stock_data (date)"))
+                conn.execute(text("""CREATE INDEX idx_date ON stock_data (date);"""))
         
         print("Database connected successfully")
         return engine
@@ -96,7 +96,7 @@ def insert_db(engine, data):
     try:
         with engine.connect() as conn:
             # Convert DataFrame to records for row-by-row processing
-            records = data.reset_index().to_dict('records')
+            records = data.reset_index().to_dict("records")
             
             for record in records:
                 # Check if this specific record exists
@@ -105,7 +105,7 @@ def insert_db(engine, data):
                     FROM stock_data 
                     WHERE date = :date AND ticker = :ticker
                     """),
-                    {"date": record['Date'], "ticker": record['Ticker']}
+                    {"date": record["Date"], "ticker": record["Ticker"]}
                 ).fetchone()
                 
                 if check_data[0] == 0:
@@ -115,13 +115,13 @@ def insert_db(engine, data):
                         VALUES (:date, :ticker, :open, :high, :low, :close, :volume)
                         """),
                         {
-                            "date": record['Date'],
-                            "ticker": record['Ticker'],
-                            "open": record['Open'],
-                            "high": record['High'],
-                            "low": record['Low'],
-                            "close": record['Close'],
-                            "volume": record['Volume']
+                            "date": record["Date"],
+                            "ticker": record["Ticker"],
+                            "open": record["Open"],
+                            "high": record["High"],
+                            "low": record["Low"],
+                            "close": record["Close"],
+                            "volume": record["Volume"]
                         }
                     )
             
