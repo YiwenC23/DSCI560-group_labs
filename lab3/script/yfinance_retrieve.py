@@ -5,8 +5,13 @@ import yfinance as yf
 from sqlalchemy import text
 
 
-def connect_db(db_username, db_password, db_name):
+def connect_db(db_username=None, db_password=None, db_name=None):
     try:
+        # If credentials are not provided, prompt for them
+        if not all([db_username, db_password, db_name]):
+            db_username = input("Please enter the username for the database: ")
+            db_password = input("Please enter the password for the database: ")
+            db_name = input("Please enter the database name: ")
         engine = sqlalchemy.create_engine(f"mysql+pymysql://{db_username}:{db_password}@localhost/{db_name}")
         
         with engine.connect() as conn:
@@ -32,8 +37,6 @@ def connect_db(db_username, db_password, db_name):
                                     AND index_name = 'idx_ticker';"))
             if check_ticker_index.fetchone()[0] == 0:
                 conn.execute(text("CREATE INDEX idx_ticker ON stock_data (ticker);"))
-            else:
-                print("Index already exists")
             
             # Check if the date index already exists
             check_date_index = conn.execute(text(" \
@@ -44,8 +47,6 @@ def connect_db(db_username, db_password, db_name):
                                     AND index_name='idx_date';"))
             if check_date_index.fetchone()[0] == 0:
                 conn.execute(text("CREATE INDEX idx_date ON stock_data (date)"))
-            else:
-                print("Index already exists")
         
         print("Database connected successfully")
         return engine
@@ -101,7 +102,6 @@ def insert_db(engine, data):
                                 WHERE date = :date AND ticker = :ticker;"),
                                 date=data.index[0], ticker=data.iloc[0]['Ticker'])
         if check_data.fetchone()[0] > 0:
-            print("Data already exists in the database")
             return
         
         # Write to database
@@ -124,6 +124,6 @@ if __name__ == "__main__":
     db_name = input("Please enter the database name: ")
     db_engine = connect_db(db_username, db_password, db_name)
     
-    raw_data = stock_retrieve()
+    stock_data = stock_retrieve()
     
-    insert_db(db_engine, raw_data)
+    insert_db(db_engine, stock_data)
