@@ -1,4 +1,4 @@
-<h1 style="text-align: center;">DSCI 560: Data Science Professional Practicum <br> Group Laboratory 3</h1>
+# DSCI 560: Group Laboratory 3
 
 ## Table of Contents
 
