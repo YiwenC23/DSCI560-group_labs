@@ -56,16 +56,15 @@ def connect_db(db_username=None, db_password=None, db_name=None):
         sys.exit()
 
 
-def stock_retrieve():
+def stock_retrieve(tickers):
     try:
-        tickers = ["AAPL", "NVDA"]
         # Get AAPL ticker object
         hist_data = pd.DataFrame()
         for i in tickers:
             ticker = yf.Ticker(i)
             
             # Get historical price data
-            tck_data = ticker.history(start="2025-01-20", end="2025-01-30", interval="1d")
+            tck_data = ticker.history(start="2024-01-01", end="2025-01-31", interval="1d")
             # Drop the last two columns
             tck_data = tck_data.iloc[:, :-2]
             # format the date to YYYY-MM-DD
@@ -95,35 +94,53 @@ def stock_retrieve():
 
 def insert_db(engine, data):
     try:
-        # Check if the data is already in the database
-        check_data = engine.execute(text(" \
-                            SELECT COUNT(1) dataExists \
-                                FROM stock_data \
-                                WHERE date = :date AND ticker = :ticker;"),
-                                date=data.index[0], ticker=data.iloc[0]['Ticker'])
-        if check_data.fetchone()[0] > 0:
-            return
-        
-        # Write to database
-        data.to_sql(
-            name="stock_data",
-            con=engine,
-            if_exists="append",
-            chunksize=1000
-        )
-        print("Stock data has successfully inserted into the database.")
+        with engine.connect() as conn:
+            # Convert DataFrame to records for row-by-row processing
+            records = data.reset_index().to_dict('records')
+            
+            for record in records:
+                # Check if this specific record exists
+                check_data = conn.execute(text("""
+                    SELECT COUNT(1) dataExists 
+                    FROM stock_data 
+                    WHERE date = :date AND ticker = :ticker
+                    """),
+                    {"date": record['Date'], "ticker": record['Ticker']}
+                ).fetchone()
+                
+                if check_data[0] == 0:
+                    # Insert only if record doesn't exist
+                    conn.execute(text("""
+                        INSERT INTO stock_data (date, ticker, open, high, low, close, volume)
+                        VALUES (:date, :ticker, :open, :high, :low, :close, :volume)
+                        """),
+                        {
+                            "date": record['Date'],
+                            "ticker": record['Ticker'],
+                            "open": record['Open'],
+                            "high": record['High'],
+                            "low": record['Low'],
+                            "close": record['Close'],
+                            "volume": record['Volume']
+                        }
+                    )
+            
+            conn.commit()
+            print("Stock data has successfully been inserted into the database.")
+    
+    
     except Exception as e:
         print(f"Filed to insert data: {e}")
         sys.exit()
 
 
 if __name__ == "__main__":
-#    ticker = ["AAPL", "MSFT", "AMZN", "NVDA", "META", "TSLA"]
+    default_tickers = ["AAPL", "MSFT", "AMZN", "NVDA", "META", "TSLA"]
     db_username = input("Please enter the username for the database: ")
     db_password = input("Please enter the password for the database: ")
     db_name = input("Please enter the database name: ")
     db_engine = connect_db(db_username, db_password, db_name)
     
-    stock_data = stock_retrieve()
+    stock_data = stock_retrieve(default_tickers)
     
     insert_db(db_engine, stock_data)
