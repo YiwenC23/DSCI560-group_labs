@@ -30,7 +30,7 @@ def connect_db(db_username=None, db_password=None, db_name=None):
             
             # Check if the index already exists
             check_ticker_index = conn.execute(text("""
-                            SELECT COUNT(1) indexExists \
+                            SELECT COUNT(1) indexExists
                                 FROM INFORMATION_SCHEMA.STATISTICS
                                 WHERE table_schema = 'dsci560'
                                     AND table_name = 'stock_data'
@@ -40,7 +40,7 @@ def connect_db(db_username=None, db_password=None, db_name=None):
             
             # Check if the date index already exists
             check_date_index = conn.execute(text("""
-                            SELECT COUNT(1) indexExists \
+                            SELECT COUNT(1) indexExists
                                 FROM INFORMATION_SCHEMA.STATISTICS
                                 WHERE table_schema = 'dsci560'
                                     AND table_name='stock_data'
@@ -68,12 +68,12 @@ def stock_retrieve(tickers):
             # Drop the last two columns
             tck_data = tck_data.iloc[:, :-2]
             # format the date to YYYY-MM-DD
-            tck_data.index = tck_data.index.strftime('%Y-%m-%d')
+            tck_data.index = tck_data.index.strftime("%Y-%m-%d")
             # Insert the ticker symbol as the first column
-            tck_data.insert(0, 'Ticker', i)
+            tck_data.insert(0, "Ticker", i)
             hist_data = pd.concat([hist_data, tck_data])
             # Sort the data by Date and Ticker
-            hist_data = hist_data.sort_values(['Date', 'Ticker'])
+            hist_data = hist_data.sort_values(["Date", "Ticker"])
         
         # Get all available information
 #        info = aapl.info
