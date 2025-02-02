@@ -1,21 +1,12 @@
 from sqlalchemy import text
-from datetime import datetime
 import yfinance as yf
-from sqlalchemy import create_engine, Column, String, Float, Integer, Date, DateTime
+from sqlalchemy import Column, String, Float, Integer, Date
 from sqlalchemy.orm import sessionmaker, declarative_base
+from yfinance_retrieve import stock_retrieve, connect_db
 
-def get_db_url():
-    print("\nDatabase Connection Details")
-    print("-" * 50)
-    print("NOTE: Enter credentials without any quotes")
-    db_username = input("Username: ").strip()
-    db_password = input("Password: ").strip().replace('"', '').replace("'", '')  # Remove any quotes
-    db_name = input("Database name: ").strip()
-    return f"mysql+pymysql://{db_username}:{db_password}@localhost/{db_name}"
 
 try:
-    db_url = get_db_url()
-    engine = create_engine(db_url)
+    engine = connect_db()
     Session = sessionmaker(bind=engine)
     session = Session()
 except Exception as e:
@@ -43,6 +34,7 @@ def validation(symbol):
             return False
         return True
     except Exception as e:
+        print(f"Error validating stock symbol: {e}")
         return False
 
 def addingstock(symbol, start_date, end_date):
@@ -52,6 +44,7 @@ def addingstock(symbol, start_date, end_date):
     try:
         # Download stock data
         stockdata = yf.download(symbol, start=start_date, end=end_date)
+#        stockdata = stock_retrieve()
         if stockdata.empty:
             print(f"No data available for {symbol} in the specified date range")
             return
