@@ -7,8 +7,7 @@ from datetime import timedelta
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 
-#* Define the base class for the database
-Base = declarative_base()
+Base = declarative_base() # Declare the base class for the database
 
 
 #* Define the StockData Class
@@ -83,7 +82,8 @@ def connect_db():
         sys.exit(1)
 
 
-#* Define the function for timestamp processing algorithm
+#TODO: Need to update the algorithm for last date of the stock data
+#* Define the function for timestamp comparison algorithm
 def compare_timestamp(session, tickers_ranges):
     if not isinstance(tickers_ranges, list):
         tickers_ranges = [tickers_ranges]
