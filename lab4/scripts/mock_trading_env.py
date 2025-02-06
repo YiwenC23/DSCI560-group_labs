@@ -1,148 +1,174 @@
-﻿import os
-import sys
-import sqlalchemy
+﻿import sys
+import requests
 import pandas as pd
 import yfinance as yf
-from sqlalchemy import text
-from datetime import datetime
+import sqlalchemy as sql
+from datetime import timedelta
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 
-def connect_db(db_username=None, db_password=None, db_name=None):
+#* Define the base class for the database
+Base = declarative_base()
+
+
+#* Define the StockData Class
+class StockData(Base):
+    #? Define the table name and columns
+    __tablename__ = "stock_data"
+    date = sql.Column(sql.Date, primary_key=True)
+    ticker = sql.Column(sql.String, primary_key=True)
+    open = sql.Column(sql.Numeric)
+    high = sql.Column(sql.Numeric)
+    low = sql.Column(sql.Numeric)
+    close = sql.Column(sql.Numeric)
+    volume = sql.Column(sql.BigInteger)
+    
+    #? Table Constraints Configuration
+    __table_args__ = (
+        sql.PrimaryKeyConstraint("date", "ticker", name="pk_stock_data"),
+        {"extend_existing": True}    # Allow the table to be extended if it already exists
+    )
+
+
+#* Define Ticker Index Class
+class TickerIndex(Base):
+    __tablename__ = "ticker_index"
+    ticker = sql.Column(sql.String(10), primary_key=True)
+    start_date = sql.Column(sql.Date, index=True)
+    end_date = sql.Column(sql.Date, index=True)
+    
+    #? Table Constraints Configuration
+    __table_args__ = (
+        sql.PrimaryKeyConstraint("ticker", name="pk_ticker_index"),
+        sql.Index("idx_ticker_dates", "ticker", "start_date", "end_date", unique=True),
+        {"extend_existing": True}
+    )
+
+
+#* Define the function to connect to the database
+def connect_db():
     try:
-        # If credentials are not provided, prompt for them
-        if not all([db_username, db_password, db_name]):
-            db_username = input("Please enter the username for the database: ")
-            db_password = input("Please enter the password for the database: ")
-            db_name = input("Please enter the database name: ")
-        engine = sqlalchemy.create_engine(f"mysql+pymysql://{db_username}:{db_password}@localhost/{db_name}")
+        #? Get the database credentials from the user
+        db_username = input("Please enter the username for the database: ")
+        db_password = input("Please enter the password for the database: ")
+        db_name = input("Please enter the database name: ")
         
-        with engine.connect() as conn:
-            conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS stock_data(
-                    date DATE NOT NULL,
-                    ticker VARCHAR(10) NOT NULL,
-                    close DECIMAL(12, 4),
-                    high DECIMAL(12, 4),
-                    low DECIMAL(12, 4),
-                    open DECIMAL(12, 4),
-                    volume BIGINT,
-                    PRIMARY KEY (date, ticker)
-                    );
-            """))
-            
-            # Check if the index already exists
-            check_ticker_index = conn.execute(text("""
-                            SELECT COUNT(1) indexExists
-                                FROM INFORMATION_SCHEMA.STATISTICS
-                                WHERE table_schema = 'dsci560'
-                                    AND table_name = 'stock_data'
-                                    AND index_name = 'idx_ticker';"""))
-            if check_ticker_index.fetchone()[0] == 0:
-                conn.execute(text("""CREATE INDEX idx_ticker ON stock_data (ticker);"""))
-            
-            # Check if the date index already exists
-            check_date_index = conn.execute(text("""
-                            SELECT COUNT(1) indexExists
-                                FROM INFORMATION_SCHEMA.STATISTICS
-                                WHERE table_schema = 'dsci560'
-                                    AND table_name='stock_data'
-                                    AND index_name='idx_date';"""))
-            if check_date_index.fetchone()[0] == 0:
-                conn.execute(text("""CREATE INDEX idx_date ON stock_data (date);"""))
+        #? Create database engine with connection pool configuration
+        engine = sql.create_engine(
+            f"mysql+pymysql://{db_username}:{db_password}@localhost/{db_name}",
+            pool_size=20,     # Number of maintained idle connections in the pool
+            pool_recycle=3600,    # Recycle connections hourly to prevent connection timeout
+            max_overflow=10,    # Allow up to 10 additional connections to the pool
+            pool_pre_ping=True,     # Validate connection viability before use
+            echo=False    # Disable engine logging
+            )
+        
+        #? Create the Session Library
+        SessionLocal = sessionmaker(
+            bind=engine,
+            autocommit=False,    # Require explicit commit() for transaction control
+            autoflush=False,    # Delay SQL emission until flush()/commit() called, enables batch operations
+            expire_on_commit=False,    # Keep object attributes accessible after commit
+            class_=sql.orm.Session    # Use the SQLAlchemy Session class
+        )
+        
+        #? Initialize database schema if not exists
+        Base.metadata.create_all(bind=engine)
         
         print("Database connected successfully")
-        return engine
+        return engine, SessionLocal
     
     except Exception as e:
-        print(e)
-        sys.exit()
+        print(f"Connection failed: {e}")
+        sys.exit(1)
 
 
-def stock_retrieve(tickers):
-    try:
-        # Get AAPL ticker object
-        hist_data = pd.DataFrame()
-        for i in tickers:
-            ticker = yf.Ticker(i)
-            
-            # Get historical price data
-            tck_data = ticker.history(start="2025-01-15", end="2025-01-31", interval="1d")
-            # Drop the last two columns
-            tck_data = tck_data.iloc[:, :-2]
-            # format the date to YYYY-MM-DD
-            tck_data.index = tck_data.index.strftime("%Y-%m-%d")
-            # Insert the ticker symbol as the first column
-            tck_data.insert(0, "Ticker", i)
-            hist_data = pd.concat([hist_data, tck_data])
-            # Sort the data by Date and Ticker
-            hist_data = hist_data.sort_values(["Date", "Ticker"])
-        
-        # Get all available information
-#        info = aapl.info
-        
-        # Get additional data
-#        dividends = aapl.dividends
-        
-#        splits = aapl.splits
-#        actions = aapl.actions
-        
-        print("Stock data retrieved successfully.")
-        return hist_data
+#* Define the function for timestamp processing algorithm
+def compare_timestamp(session, tickers_ranges):
+    if not isinstance(tickers_ranges, list):
+        tickers_ranges = [tickers_ranges]
     
-    except Exception as e:
-        print(e)
-        sys.exit()
+    tickers = [tr[0] for tr in tickers_ranges]
+    indexes = session.query(TickerIndex).filter(TickerIndex.ticker.in_(tickers)).all()
+    index_dict = {idx.ticker: idx for idx in indexes}
+    
+    results = {}
+    for ticker, new_start, new_end in tickers_ranges:
+        idx = index_dict.get(ticker)
+        
+        if not idx:
+            results[ticker] = [(new_start, new_end)]
+            continue
+        
+        if new_start <= idx.end_date and new_end >= idx.start_date:
+            results[ticker] = []
+            continue
+        
+        left = (new_start, idx.start_date - timedelta(days=1)) if new_start < idx.start_date else None
+        right = (idx.end_date + timedelta(days=1), new_end) if new_end > idx.end_date else None
+        
+        valid = []
+        if left and left[0] <= left[1]:
+            valid.append(left)
+        if right and right[0] <= right[1]:
+            valid.append(right)
+        
+        results[ticker] = valid
+    
+    return results
 
 
-def insert_db(engine, data):
+#* Define the function to insert data into the database
+def insert_db(data):
     try:
-        with engine.connect() as conn:
-            # Convert DataFrame to records for row-by-row processing
-            records = data.reset_index().to_dict("records")
+        with SessionLocal() as session:
+            records = data.reset_index()[["date", "ticker", "open", "high", "low", "close", "volume"]]
             
-            for record in records:
-                # Check if this specific record exists
-                check_data = conn.execute(text("""
-                    SELECT COUNT(1) dataExists 
-                    FROM stock_data 
-                    WHERE date = :date AND ticker = :ticker
-                    """),
-                    {"date": record["Date"], "ticker": record["Ticker"]}
-                ).fetchone()
-                
-                if check_data[0] == 0:
-                    # Insert only if record doesn't exist
-                    conn.execute(text("""
-                        INSERT INTO stock_data (date, ticker, open, high, low, close, volume)
-                        VALUES (:date, :ticker, :open, :high, :low, :close, :volume)
-                        """),
-                        {
-                            "date": record["Date"],
-                            "ticker": record["Ticker"],
-                            "open": record["Open"],
-                            "high": record["High"],
-                            "low": record["Low"],
-                            "close": record["Close"],
-                            "volume": record["Volume"]
-                        }
-                    )
-            
-            conn.commit()
+            session.bulk_insert_mappings(StockData, records.to_dict(orient="records"))
+            session.commit()
             print("Stock data has successfully been inserted into the database.")
-    
     
     except Exception as e:
         print(f"Filed to insert data: {e}")
-        sys.exit()
+        sys.exit(1)
+
+
+#* Define the function to retrieve historical stock data
+def stock_retrieve(ticker_list, start_date, end_date):
+    try:
+        raw_data = yf.download(
+            ticker_list,
+            group_by="Ticker",
+            start=start_date,
+            end=end_date,
+            interval="1d",
+            progress=False
+        )
+        
+        stock_data = (
+            raw_data.stack(level=0, future_stack=True)
+            .rename_axis(["Date", "Ticker"])
+            .reset_index(level=1)
+            .reset_index(drop=False)
+            .rename(columns={
+                "Date": "date",
+                "Ticker": "ticker",
+                "Open": "open",
+                "High": "high",
+                "Low": "low",
+                "Close": "close",
+                "Volume": "volume"
+            })
+            .rename_axis(columns=None)
+        )
+        
+        print("Stock data retrieved successfully.")
+        return stock_data.set_index("date")
+    
+    except Exception as e:
+        print(e)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    default_tickers = ["AAPL", "NVDA"]
-    db_username = input("Please enter the username for the database: ")
-    db_password = input("Please enter the password for the database: ")
-    db_name = input("Please enter the database name: ")
-    db_engine = connect_db(db_username, db_password, db_name)
-    
-    stock_data = stock_retrieve(default_tickers)
-    
-    insert_db(db_engine, stock_data)
+    engine, SessionLocal = connect_db()
