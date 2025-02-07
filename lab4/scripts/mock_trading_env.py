@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 import yfinance as yf
 import sqlalchemy as sql
-from datetime import timedelta
+from datetime import datetime, timedelta
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 
@@ -15,12 +15,12 @@ class StockData(Base):
     #? Define the table name and columns
     __tablename__ = "stock_data"
     date = sql.Column(sql.Date, primary_key=True)
-    ticker = sql.Column(sql.String, primary_key=True)
-    open = sql.Column(sql.Numeric)
-    high = sql.Column(sql.Numeric)
-    low = sql.Column(sql.Numeric)
-    close = sql.Column(sql.Numeric)
-    volume = sql.Column(sql.BigInteger)
+    ticker = sql.Column(sql.String(10), primary_key=True)
+    open = sql.Column(sql.Float)
+    high = sql.Column(sql.Float)
+    low = sql.Column(sql.Float)
+    close = sql.Column(sql.Float)
+    volume = sql.Column(sql.Integer)
     
     #? Table Constraints Configuration
     __table_args__ = (
@@ -44,6 +44,9 @@ class TickerIndex(Base):
     )
 
 
+# TODO: Define the user asset table class.
+
+
 #* Define the function to connect to the database
 def connect_db():
     try:
@@ -52,6 +55,7 @@ def connect_db():
         db_password = input("Please enter the password for the database: ")
         db_name = input("Please enter the database name: ")
         
+        print(f"Establishing connection to {db_name} database as {db_username}...")
         #? Create database engine with connection pool configuration
         engine = sql.create_engine(
             f"mysql+pymysql://{db_username}:{db_password}@localhost/{db_name}",
@@ -74,7 +78,7 @@ def connect_db():
         #? Initialize database schema if not exists
         Base.metadata.create_all(bind=engine)
         
-        print("Database connected successfully")
+        print("Successfully connected to the database!")
         return engine, SessionLocal
     
     except Exception as e:
@@ -82,43 +86,73 @@ def connect_db():
         sys.exit(1)
 
 
-#TODO: Need to update the algorithm for last date of the stock data
-#* Define the function for timestamp comparison algorithm
+#* Define the function for timestamp processing algorithm
 def compare_timestamp(session, tickers_ranges):
+    
+    results = {}
+    
+    #? Ensure tickers_ranges is a list
     if not isinstance(tickers_ranges, list):
         tickers_ranges = [tickers_ranges]
     
+    #? Retrieve existing ticker index records for all tickers at once.
     tickers = [tr[0] for tr in tickers_ranges]
     indexes = session.query(TickerIndex).filter(TickerIndex.ticker.in_(tickers)).all()
     index_dict = {idx.ticker: idx for idx in indexes}
     
-    results = {}
     for ticker, new_start, new_end in tickers_ranges:
         idx = index_dict.get(ticker)
         
+        #! Case 1: If no stored data exists, the complete timeline is the new data range
         if not idx:
-            results[ticker] = [(new_start, new_end)]
-            continue
-        
-        if new_start <= idx.end_date and new_end >= idx.start_date:
-            results[ticker] = []
-            continue
-        
-        left = (new_start, idx.start_date - timedelta(days=1)) if new_start < idx.start_date else None
-        right = (idx.end_date + timedelta(days=1), new_end) if new_end > idx.end_date else None
-        
-        valid = []
-        if left and left[0] <= left[1]:
-            valid.append(left)
-        if right and right[0] <= right[1]:
-            valid.append(right)
-        
-        results[ticker] = valid
+            results[ticker] = {
+                "complete_range": (new_start, new_end),
+                "missing_segments": [(new_start, new_end)]
+            }
+        else:
+            #? Get the stored data interval and the new data interval
+            results[ticker] = {}
+            idx_interval = (idx.start_date, idx.end_date)
+            new_interval = (new_start, new_end)
+            
+            #? The overall data range is the minimum start date and the maximum end date
+            overall_start = min(new_interval[0], idx_interval[0])
+            overall_end = max(new_interval[1], idx_interval[1])
+            results[ticker]["complete_range"] = (overall_start, overall_end)
+            
+            #? Initialize the missing segments
+            missing_segments = []
+            
+            #? Handle the gap relationships
+            #! Case 2: New data interval left-apart from the stored data interval
+            if new_interval[1] < idx_interval[0]:
+                gap_start = new_interval[0]
+                gap_end = idx_interval[0] - timedelta(days=1)
+                if gap_start <= gap_end:
+                    missing_segments.append((gap_start, gap_end))
+            
+            #! Case 3: New data interval right-apart from the stored data interval
+            elif new_interval[0] > idx_interval[1]:
+                gap_start = idx_interval[1] + timedelta(days=1)
+                gap_end = new_interval[1]
+                if gap_start <= gap_end:
+                    missing_segments.append((gap_start, gap_end))
+            
+            #? Handle the containment relationships
+            else:
+                #! Case 4: New data interval left-overlaps with the stored data interval
+                if new_interval[0] < idx_interval[0]:
+                    missing_segments.append((new_interval[0], idx_interval[0] - timedelta(days=1)))
+                #! Case 5: New data interval right-overlaps with the stored data interval
+                if new_interval[1] > idx_interval[1]:
+                    missing_segments.append((idx_interval[1] + timedelta(days=1), new_interval[1]))
+            
+            results[ticker]["missing_segments"] = missing_segments
     
     return results
 
 
-#* Define the function to insert data into the database
+#* Defined function for data insertion
 def insert_db(data):
     try:
         with SessionLocal() as session:
@@ -126,7 +160,7 @@ def insert_db(data):
             
             session.bulk_insert_mappings(StockData, records.to_dict(orient="records"))
             session.commit()
-            print("Stock data has successfully been inserted into the database.")
+            print("\nSuccessfully inserted stock data into the database!")
     
     except Exception as e:
         print(f"Filed to insert data: {e}")
@@ -159,10 +193,15 @@ def stock_retrieve(ticker_list, start_date, end_date):
                 "Close": "close",
                 "Volume": "volume"
             })
+            .round({
+                "open": 4,
+                "high": 4,
+                "low": 4,
+                "close": 4
+            }) # Round the prices to 4 decimal places
             .rename_axis(columns=None)
         )
         
-        print("Stock data retrieved successfully.")
         return stock_data.set_index("date")
     
     except Exception as e:
@@ -170,5 +209,91 @@ def stock_retrieve(ticker_list, start_date, end_date):
         sys.exit(1)
 
 
+#* Define Workflow Function
+def workflow(ticker_list, start_date, end_date):
+    try:
+        start_dateObj = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end_dateObj = datetime.strptime(end_date, "%Y-%m-%d").date()
+        
+        with SessionLocal() as session:
+            ticker_ranges = [(tk, start_dateObj, end_dateObj) for tk in ticker_list]
+            needed_ranges = compare_timestamp(session, ticker_ranges)
+            
+        all_data = []
+        for tk in ticker_list:
+            needed_tr = needed_ranges.get(tk)
+            print(f"\nRanges for {tk}: {needed_tr}\n")
+            
+            overall_range = needed_tr["complete_range"]
+            missing_segments = needed_tr["missing_segments"]
+            
+            #! If there are no missing segments (and an index exists), the complete range is already stored.
+            if needed_tr and not missing_segments:
+                print(f"{tk}: Data from {overall_range[0]} to {overall_range[1]} already exists in the database.")
+                continue
+            
+            print(f"\n{tk}: Fetching data for complete range {overall_range[0]} to {overall_range[1]}...")
+            #? Fetch the missing segments data and insert into the database
+            for ms in missing_segments:
+                all_data.append(stock_retrieve([tk], ms[0], ms[1]))
+            
+            print("Successfully retrieved stock data!")
+            #? Update/insert the ticker index with the new complete range
+            new_index = TickerIndex(
+                ticker=tk,
+                start_date=overall_range[0],
+                end_date=overall_range[1]
+            )
+            session.merge(new_index)
+        
+        #? If any new data was fetched, combine and insert it into the database
+        if all_data:
+            combined_data = pd.concat(all_data)
+            insert_db(combined_data)
+        
+        session.commit()
+    
+    except Exception as e:
+        print(f"Workflow failed: {e}")
+        sys.exit(1)
+
+
+# TODO: Define the function for retrieving real-time price data of stocks that are in the database.
+
+# TODO: Define the function for trading transactions.
+
+# TODO: Define the function for calculating the portfolio's total value and total gain/loss. (With the portfolio's composition)
+
+# TODO: Define the function to display the portfolio's total value and total gain/loss in real-time.
+
+# TODO: Define the function for interactive trading interface.
+
+
 if __name__ == "__main__":
     engine, SessionLocal = connect_db()
+    while True:
+        print("\nWelcome to the Mock Trading Environment!")
+        print("\nYour Options Are:")
+        print("1. Add stock to portfolio")
+        print("2. Remove stock from portfolio")
+        print("3. Display all portfolios")
+        print("4. Exit")
+        userschoice = input("Select one of the above: ")
+
+        if userschoice == "1":
+            symbol = [input("Enter stock symbol: ").upper()]
+            start_date = input("Enter start date (YYYY-MM-DD): ")
+            end_date = input("Enter end date (YYYY-MM-DD): ")
+            workflow(symbol, start_date, end_date)
+        elif userschoice == "2":
+            symbol = input("Enter the stock symbol to remove: ").upper()
+#            removingstock(symbol)
+        elif userschoice == "3":
+#            displayingpf()
+            continue
+        elif userschoice == "4":
+            print("Goodbye!")
+            break
+        else:
+            print("Invalid option. Please try again.")
+    sys.exit(0)
