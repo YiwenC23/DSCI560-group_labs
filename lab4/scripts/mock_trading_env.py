@@ -193,12 +193,6 @@ def stock_retrieve(ticker_list, start_date, end_date):
                 "Close": "close",
                 "Volume": "volume"
             })
-            .round({
-                "open": 4,
-                "high": 4,
-                "low": 4,
-                "close": 4
-            }) # Round the prices to 4 decimal places
             .rename_axis(columns=None)
         )
         
@@ -279,7 +273,7 @@ if __name__ == "__main__":
         print("3. Display all portfolios")
         print("4. Exit")
         userschoice = input("Select one of the above: ")
-
+        
         if userschoice == "1":
             symbol = [input("Enter stock symbol: ").upper()]
             start_date = input("Enter start date (YYYY-MM-DD): ")
@@ -287,7 +281,7 @@ if __name__ == "__main__":
             workflow(symbol, start_date, end_date)
         elif userschoice == "2":
             symbol = input("Enter the stock symbol to remove: ").upper()
-#            removingstock(symbol)
+            continue
         elif userschoice == "3":
 #            displayingpf()
             continue
