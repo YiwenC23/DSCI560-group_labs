@@ -262,7 +262,7 @@ def get_DBdata():
         stock_data = session.query(StockData).all()
         df = pd.DataFrame([s.__dict__ for s in stock_data])
         df= df.drop(columns=["_sa_instance_state"], errors="ignore")
-        print(df)
+        return df
 
 if __name__ == "__main__":
     connect_db()

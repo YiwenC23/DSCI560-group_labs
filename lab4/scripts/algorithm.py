@@ -112,5 +112,3 @@ if __name__ == "__main__":
 #         df = pd.DataFrame([s.__dict__ for s in stock_data])
 #         return(df)
 
-if __name__ == "__main__":
-    get_DBdata()
