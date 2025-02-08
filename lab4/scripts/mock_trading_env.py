@@ -5,20 +5,23 @@ import yfinance as yf
 import sqlalchemy as sql
 import concurrent.futures
 
-from database import SessionLocal
-from yfinance_retrieve import UserAsset, TickerIndex, insert_db, removingstock, stock_retrieve, workflow
+from database import SessionLocal, StockData, TickerIndex, UserAsset
+from yfinance_retrieve import insert_db, removingstock, stock_retrieve, workflow
 
 
-def get_portfolio_tickers():
+def portfolio_ticker_list():
     try:
-        with SessionLocal() as session:
-            tickers = session.query(TickerIndex.ticker).distinct().all()
+        session = SessionLocal()
+        tickers = session.query(TickerIndex.ticker).distinct().all()
+        if not tickers:
+            print("No tickers found in the database.")
+            return []
+        else:
             ticker_list = [tkr[0] for tkr in tickers]
             return ticker_list
     
     except Exception as e:
         print(f"Error retrieving portfolio tickers: {e}")
-        sys.exit(1)
 
 
 def fetch_single_ticker(ticker_symbol):
@@ -101,7 +104,6 @@ class Transaction:
         except Exception as e:
             print(f"Transaction failed: {e}")
             self.session.rollback()
-            sys.exit(1)
 
 
     def sell(self, symbol, quantity):
@@ -147,7 +149,6 @@ class Transaction:
         except Exception as e:
             print(f"Transaction failed: {e}")
             self.session.rollback()
-            sys.exit(1)
 
 
 #* Define the function for calculating real-time total portfolio value and profit/loss.
@@ -209,7 +210,12 @@ def calculate_portfolio_value():
     
     except Exception as e:
         print(f"Failed to calculate portfolio value: {e}")
-        sys.exit(1)
+
+
+# TODO: Define a function to update the historical data of the stock in the database.
+
+# TODO: Define the function for Terminal-User Interface.
+
 
 def main():
     while True:
@@ -220,10 +226,10 @@ def main():
         print("4. Exit")
         userschoice = input("Select one of the above: ")
         if userschoice == "1":
-            symbol = list(input("Enter stock symbol: ").upper())
-            start_date = input("Enter start date (YYYY-MM-DD): ")
-            end_date = input("Enter end date (YYYY-MM-DD): ")
-            workflow(symbol, start_date, end_date)
+            symbol = input("Enter stock symbol: ").upper()
+            start_date = input("Enter start date (YYYY-MM-DD): ") or None
+            end_date = input("Enter end date (YYYY-MM-DD): ") or None
+            workflow([symbol], start_date, end_date)
         elif userschoice == "2":
             symbol = input("Enter the stock symbol to remove: ").upper()
             removingstock(symbol)
@@ -238,6 +244,6 @@ def main():
 
 
 if __name__ == "__main__":
-    ticker_list = get_portfolio_tickers()
+    ticker_list = portfolio_ticker_list()
     tickers_info = parallel_fetch_tickers()
     main()
