@@ -2,13 +2,10 @@
 import pandas as pd
 import yfinance as yf
 import sqlalchemy as sql
+from sqlalchemy import text
 from datetime import datetime, timedelta
-from sqlalchemy.orm import declarative_base, sessionmaker
 
-
-Base = declarative_base() # Declare the base class for the database
-engine = None
-SessionLocal = None
+from database import Base, SessionLocal
 
 
 #* Define the StockData Class
@@ -48,48 +45,40 @@ class TickerIndex(Base):
 #* Define User Asset Table Class
 class UserAsset(Base):
     __tablename__ = "user_asset"
-    ticker = sql.Column(sql.String(10), primary_key=True)
-    quantity = sql.Column(sql.Integer)
-    cost_basis = sql.Column(sql.Float)
-
-
-#* Define the function to connect to the database
-def connect_db():
-    global engine, SessionLocal
-    try:
-        #? Get the database credentials from the user
-        db_username = input("Please enter the username for the database: ")
-        db_password = input("Please enter the password for the database: ")
-        db_name = input("Please enter the database name: ")
-        
-        print(f"Establishing connection to {db_name} database as {db_username}...")
-        #? Create database engine with connection pool configuration
-        engine = sql.create_engine(
-            f"mysql+pymysql://{db_username}:{db_password}@localhost/{db_name}",
-            pool_size=20,     # Number of maintained idle connections in the pool
-            pool_recycle=3600,    # Recycle connections hourly to prevent connection timeout
-            max_overflow=10,    # Allow up to 10 additional connections to the pool
-            pool_pre_ping=True,     # Validate connection viability before use
-            echo=False    # Disable engine logging
-            )
-        
-        #? Create the Session Library
-        SessionLocal = sessionmaker(
-            bind=engine,
-            autocommit=False,    # Require explicit commit() for transaction control
-            autoflush=False,    # Delay SQL emission until flush()/commit() called, enables batch operations
-            expire_on_commit=False,    # Keep object attributes accessible after commit
-            class_=sql.orm.Session    # Use the SQLAlchemy Session class
-        )
-        
-        #? Initialize database schema if not exists
-        Base.metadata.create_all(bind=engine)
-        
-        print("Successfully connected to the database!")
+    ticker = sql.Column(sql.String(10), primary_key=True) # Ticker symbol
+    datetime = sql.Column(sql.DateTime, primary_key=True) # Purchase date
+    quantity = sql.Column(sql.Integer, nullable=False) # Quantity purchased at a time
+    price = sql.Column(sql.Float, nullable=False) # Purchase price
     
-    except Exception as e:
-        print(f"Connection failed: {e}")
-        sys.exit(1)
+    #? Table Constraints Configuration
+    __table_args__ = (
+        sql.PrimaryKeyConstraint("ticker", "datetime", name="pk_userasset"),  # Explicit composite PK
+        sql.ForeignKeyConstraint(["ticker"], ["ticker_index.ticker"], name="fk_userasset_ticker"),
+        sql.Index("idx_userasset_ticker", "ticker"),  # Faster lookups by ticker
+        {"extend_existing": True}
+    )
+    
+    @property
+    def transaction_cost(self): # Total purchase price when a transaction made on a ticker
+        return self.quantity * self.price
+    
+    @classmethod
+    def ticker_total_cost(cls, session, ticker):
+        total = session.query(
+            sql.func.sum(cls.quantity * cls.price)
+        ).filter(
+            cls.ticker == ticker
+        ).scalar()
+        return total
+    
+    @classmethod
+    def total_portfolio_value(cls, session):
+        tickers = session.query(cls.ticker).distinct().all()
+        
+        total_value = 0
+        for (ticker, ) in tickers:
+            total_value += cls.ticker_total_cost(session, ticker)
+        return total_value
 
 
 #* Define the function for timestamp processing algorithm
@@ -171,6 +160,23 @@ def insert_db(data):
     except Exception as e:
         print(f"Filed to insert data: {e}")
         sys.exit(1)
+
+
+def removingstock(symbol):
+    try:
+        with SessionLocal() as session:
+            result = session.execute(
+                text("DELETE FROM stock_data WHERE ticker = :symbol"),
+                {"symbol": symbol}
+            )
+            session.commit()
+            if result.rowcount > 0:
+                print(f"Removed {symbol} from database")
+            else:
+                print(f"{symbol} not found in database")
+    except Exception as e:
+        print(f"Error removing stock: {e}")
+        session.rollback()
 
 
 #* Define the function to retrieve historical stock data
@@ -256,38 +262,3 @@ def workflow(ticker_list, start_date, end_date):
     except Exception as e:
         print(f"Workflow failed: {e}")
         sys.exit(1)
-
-def get_DBdata():
-    with SessionLocal() as session:
-        stock_data = session.query(StockData).all()
-        df = pd.DataFrame([s.__dict__ for s in stock_data])
-        df= df.drop(columns=["_sa_instance_state"], errors="ignore")
-        return df
-
-if __name__ == "__main__":
-    connect_db()
-    while True:
-        print("\nWelcome to the Mock Trading Environment!")
-        print("\nYour Options Are:")
-        print("1. Add stock to portfolio")
-        print("2. Remove stock from portfolio")
-        print("3. Display all portfolios")
-        print("4. Exit")
-        userschoice = input("Select one of the above: ")
-        
-        if userschoice == "1":
-            symbol = [input("Enter stock symbol: ").upper()]
-            start_date = input("Enter start date (YYYY-MM-DD): ")
-            end_date = input("Enter end date (YYYY-MM-DD): ")
-            workflow(symbol, start_date, end_date)
-        elif userschoice == "2":
-            symbol = input("Enter the stock symbol to remove: ").upper()
-            continue
-        elif userschoice == "3":
-            get_DBdata()
-        elif userschoice == "4":
-            print("Goodbye!")
-            break
-        else:
-            print("Invalid option. Please try again.")
-    sys.exit(0)
