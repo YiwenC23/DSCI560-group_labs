@@ -1,5 +1,4 @@
-﻿import sys
-import pandas as pd
+﻿import pandas as pd
 import yfinance as yf
 import sqlalchemy as sql
 from sqlalchemy import text
@@ -83,8 +82,7 @@ def insert_db(data):
         
         session.bulk_insert_mappings(StockData, records.to_dict(orient="records"))
         session.commit()
-        print("\nSuccessfully inserted stock data into the database!")
-    
+        
         tickers = data["ticker"].unique()
         for tkr in tickers:
             update_ticker_index(tkr)
@@ -127,7 +125,7 @@ def removingstock(symbol):
         update_ticker_index(symbol)
         
         if result > 0:
-            print(f"Removed {symbol} from database")
+            print(f"Successfully removed {symbol} from database")
         else:
             print(f"{symbol} not found in database")
     
@@ -193,9 +191,7 @@ def insert_workflow(ticker_list, start_date=None, end_date=None):
                 update_ticker_index(tkr)
             
             session.commit()
-            
-            return print("Successfully retrieved stock data!")
-        
+                    
         #? If start and end date is provided, retrieve data for the specified range
         else:
             start_dateObj = datetime.strptime(start_date, "%Y-%m-%d").date()
@@ -207,7 +203,6 @@ def insert_workflow(ticker_list, start_date=None, end_date=None):
             all_data = []
             for tk in ticker_list:
                 needed_tr = needed_ranges.get(tk)
-                print(f"\nRanges for {tk}: {needed_tr}\n")
                 
                 overall_range = needed_tr["complete_range"]
                 missing_segments = needed_tr["missing_segments"]
@@ -217,12 +212,10 @@ def insert_workflow(ticker_list, start_date=None, end_date=None):
                     print(f"{tk}: Data from {overall_range[0]} to {overall_range[1]} already exists in the database.")
                     continue
                 
-                print(f"\n{tk}: Fetching data for complete range {overall_range[0]} to {overall_range[1]}...")
                 #? Fetch the missing segments data and insert into the database
                 for ms in missing_segments:
                     all_data.append(stock_retrieve([tk], ms[0], ms[1]))
                 
-                print("Successfully retrieved stock data!")
                 update_ticker_index(tk)
             
             #? If any new data was fetched, combine and insert it into the database
@@ -233,5 +226,5 @@ def insert_workflow(ticker_list, start_date=None, end_date=None):
             session.commit()
     
     except Exception as e:
-        print(f"Process failed: {e}")
+        raise ValueError(f"Process failed: {e}")
         session.rollback()
