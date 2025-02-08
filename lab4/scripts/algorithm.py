@@ -142,6 +142,15 @@ def algorithm(stock_data):
         stock_data = stock_data[['date', 'close']]
         stock_data.set_index('date', inplace=True)
 
+        # determine the seasonality/trend feature of the stock price
+        # plot_acf(stock_data['close'], lags=52)  # Adjust lags as needed
+        # plt.title('ACF of Stock Time Series for Daily Data')
+        # plt.show()
+
+        # plt.plot(stock_data.index, stock_data['close'])
+        # plt.title('Historial Stock Prices')
+        # plt.show()
+
         # split training and testing data set
         proportion = int(len(stock_data) * 0.8)
         training_data, testing_data = stock_data[:proportion], stock_data[proportion:]
@@ -164,7 +173,7 @@ def algorithm(stock_data):
 
         # auto-arima
         stock_data["ARIMA"] = np.nan
-        ARIMA = pm.auto_arima(training_data, seasonal=False, stepwise=True, trace=True)
+        ARIMA = pm.auto_arima(training_data, seasonal=False, stepwise=True)
         ARIMA_predictions = ARIMA.predict(n_periods=len(testing_data))
         for i, pred in enumerate(ARIMA_predictions):
             stock_data.iloc[len(training_data)+i, stock_data.columns.get_loc("ARIMA")] = pred
