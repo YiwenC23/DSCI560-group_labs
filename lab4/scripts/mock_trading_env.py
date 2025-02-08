@@ -6,7 +6,7 @@ import sqlalchemy as sql
 import concurrent.futures
 
 from database import SessionLocal, StockData, TickerIndex, UserAsset
-from yfinance_retrieve import insert_db, removingstock, stock_retrieve, workflow
+from yfinance_retrieve import removingstock, insert_workflow
 
 
 def portfolio_ticker_list():
@@ -212,7 +212,40 @@ def calculate_portfolio_value():
         print(f"Failed to calculate portfolio value: {e}")
 
 
-# TODO: Define a function to update the historical data of the stock in the database.
+#* Define the function for updating the current daily stock data into the database.
+def update_daily_data():
+    try:
+        session = SessionLocal()
+        
+        #? Get end date for each ticker in the TickerIndex table
+        ticker_indices = session.query(TickerIndex).all()
+        
+        today = datetime.today().date()
+        
+        
+        for idx in ticker_indices:
+            ticker = idx.ticker
+            last_date = idx.end_date
+            
+            if last_date < today:
+                next_date = last_date + datetime.timedelta(days=1)
+                
+                fresh_data = yf.download(
+                    ticker, 
+                    start=str(next_date),
+                    end=str(today + datetime.timedelta(days=1)),
+                    interval="1d",
+                    progress=False
+                )
+                
+                if fresh_data.empty:
+                    print(f"No new data available for {ticker} from {next_date} to {today}.")
+                else:
+                    insert_workflow([ticker], str(next_date), str(today))
+                    print(f"Successfully updated data for {ticker} from {next_date} to {today}.")
+    
+    except Exception as e:
+        print(f"Failed to update daily data: {e}")
 
 # TODO: Define the function for Terminal-User Interface.
 
@@ -229,7 +262,7 @@ def main():
             symbol = input("Enter stock symbol: ").upper()
             start_date = input("Enter start date (YYYY-MM-DD): ") or None
             end_date = input("Enter end date (YYYY-MM-DD): ") or None
-            workflow([symbol], start_date, end_date)
+            insert_workflow([symbol], start_date, end_date)
         elif userschoice == "2":
             symbol = input("Enter the stock symbol to remove: ").upper()
             removingstock(symbol)
