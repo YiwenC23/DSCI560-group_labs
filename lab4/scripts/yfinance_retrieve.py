@@ -85,10 +85,37 @@ def insert_db(data):
         session.commit()
         print("\nSuccessfully inserted stock data into the database!")
     
+        tickers = data["ticker"].unique()
+        for tkr in tickers:
+            update_ticker_index(tkr)
+    
     except Exception as e:
         print(f"Filed to insert data: {e}")
         session.rollback()
 
+
+#* Define a function for ticker index update
+def update_ticker_index(ticker):
+    try:
+        session = SessionLocal()
+        #? Get the first record and latest records of the ticker
+        first_record = session.query(StockData).filter(StockData.ticker == ticker).order_by(StockData.date.asc()).first()
+        latest_record = session.query(StockData).filter(StockData.ticker == ticker).order_by(StockData.date.desc()).first()
+        
+        #? If there is no data for the ticker, that means the ticker data has been removed from the database, so delete the ticker index record
+        if not first_record and not latest_record:
+            session.query(TickerIndex).filter(TickerIndex.ticker == ticker).delete()
+            session.commit()
+        
+        #? If there is data for the ticker, update the ticker index with the new complete range
+        else:
+            index = TickerIndex(ticker=ticker, start_date=first_record.date, end_date=latest_record.date)
+            session.merge(index)
+            session.commit()
+    
+    except Exception as e:
+        print(f"Failed to update ticker index: {e}")
+        session.rollback()
 
 #* Defined function for data removal
 def removingstock(symbol):
@@ -97,10 +124,13 @@ def removingstock(symbol):
         result = session.query(StockData).filter(StockData.ticker == symbol).delete()
         session.commit()
         
+        update_ticker_index(symbol)
+        
         if result > 0:
             print(f"Removed {symbol} from database")
         else:
             print(f"{symbol} not found in database")
+    
     except Exception as e:
         print(f"Error removing stock: {e}")
         session.rollback()
@@ -150,7 +180,7 @@ def stock_retrieve(ticker_list, start_date=None, end_date=None):
 
 
 #* Define Workflow Function
-def workflow(ticker_list, start_date=None, end_date=None):
+def insert_workflow(ticker_list, start_date=None, end_date=None):
     try:
         session = SessionLocal()
         
@@ -158,6 +188,11 @@ def workflow(ticker_list, start_date=None, end_date=None):
         if start_date is None and end_date is None:
             stock_data = stock_retrieve(ticker_list)
             insert_db(stock_data)
+            
+            for tkr in ticker_list:
+                update_ticker_index(tkr)
+            
+            session.commit()
             
             return print("Successfully retrieved stock data!")
         
@@ -188,13 +223,7 @@ def workflow(ticker_list, start_date=None, end_date=None):
                     all_data.append(stock_retrieve([tk], ms[0], ms[1]))
                 
                 print("Successfully retrieved stock data!")
-                #? Update/insert the ticker index with the new complete range
-                new_index = TickerIndex(
-                    ticker=tk,
-                    start_date=overall_range[0],
-                    end_date=overall_range[1]
-                )
-                session.merge(new_index)
+                update_ticker_index(tk)
             
             #? If any new data was fetched, combine and insert it into the database
             if all_data:
@@ -205,3 +234,4 @@ def workflow(ticker_list, start_date=None, end_date=None):
     
     except Exception as e:
         print(f"Process failed: {e}")
+        session.rollback()
