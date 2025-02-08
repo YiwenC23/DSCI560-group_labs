@@ -70,6 +70,7 @@ def missing_data(df):
     
     return df
 
+# generate rmse and mae for the corresponding model
 def model_evaluation(actual, predicted, model_name, dict):
     actual = actual.dropna()
     predicted = predicted.dropna()
@@ -85,6 +86,7 @@ def model_evaluation(actual, predicted, model_name, dict):
 
     return dict
 
+# generate trading signal based on various model performance (i.e., RMSE, MAE)
 def decision_signal(metrics, stock_data, ARIMA_model):
     mae_dict = {key: value for key, value in metrics.items() if 'MAE' in key}
     rmse_dict = {key: value for key, value in metrics.items() if 'RMSE' in key}
@@ -134,6 +136,7 @@ def algorithm(stock_data):
         stock_data = stock_data[['date', 'close']]
         stock_data.set_index('date', inplace=True)
 
+        # split training and testing data set
         proportion = int(len(stock_data) * 0.8)
         training_data, testing_data = stock_data[:proportion], stock_data[proportion:]
         metrics = {}
