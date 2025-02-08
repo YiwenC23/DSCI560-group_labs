@@ -6,7 +6,7 @@ import sqlalchemy as sql
 import concurrent.futures
 
 from database import SessionLocal
-from yfinance_retrieve import UserAsset, TickerIndex, insert_db, removingstock
+from yfinance_retrieve import UserAsset, TickerIndex, insert_db, removingstock, stock_retrieve, workflow
 
 
 def get_portfolio_tickers():
@@ -219,12 +219,11 @@ def main():
         print("3. Display all portfolios")
         print("4. Exit")
         userschoice = input("Select one of the above: ")
-
         if userschoice == "1":
-            symbol = input("Enter stock symbol: ").upper()
+            symbol = list(input("Enter stock symbol: ").upper())
             start_date = input("Enter start date (YYYY-MM-DD): ")
             end_date = input("Enter end date (YYYY-MM-DD): ")
-            insert_db(symbol, start_date, end_date)
+            workflow(symbol, start_date, end_date)
         elif userschoice == "2":
             symbol = input("Enter the stock symbol to remove: ").upper()
             removingstock(symbol)
