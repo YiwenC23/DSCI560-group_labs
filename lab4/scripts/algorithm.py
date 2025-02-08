@@ -91,34 +91,40 @@ def decision_signal(metrics, stock_data, ARIMA_model):
     mae_dict = {key: value for key, value in metrics.items() if 'MAE' in key}
     rmse_dict = {key: value for key, value in metrics.items() if 'RMSE' in key}
 
-    mae_dict = sorted(mae_dict.items(), key=lambda item: item[1])
-    rmse_dict = sorted(rmse_dict.items(), key=lambda item: item[1])
+    mae_sorted = sorted(mae_dict.items(), key=lambda item: item[1])
+    rmse_sorted = sorted(rmse_dict.items(), key=lambda item: item[1])
 
-    model_names = ['MA', 'ARIMA', 'ES']
-    rank = 1
-    rank_dict = {'MA':0, 'ARIMA':0, 'ES':0}
+    rank_dict = {'MA': 0, 'ARIMA': 0, 'ES': 0}
 
-    for model in model_names:
-        for key in mae_dict.keys():
-            if model in key:
-                rank_dict[key] += rank
-                rank += 1
-        for key in rmse_dict.keys():
-            if model in key:
-                rank_dict[key] += rank
-                rank += 1
-    
+    for rank, (key, _) in enumerate(mae_sorted, start=1):
+        if 'MA' in key:
+            rank_dict['MA'] += rank
+        elif 'ARIMA' in key:
+            rank_dict['ARIMA'] += rank
+        elif 'ES' in key:
+            rank_dict['ES'] += rank
+
+    for rank, (key, _) in enumerate(rmse_sorted, start=1):
+        if 'MA' in key:
+            rank_dict['MA'] += rank
+        elif 'ARIMA' in key:
+            rank_dict['ARIMA'] += rank
+        elif 'ES' in key:
+            rank_dict['ES'] += rank
+
     best_model = min(rank_dict, key=rank_dict.get)
 
     if best_model == 'MA':
         prediction = stock_data['close'].iloc[-3:].mean()
     elif best_model == 'ES':
-        last_10_data = stock_data['close'].iloc[i-10:i]
+        last_10_data = stock_data['close'].iloc[-10:]
         ES = ExponentialSmoothing(last_10_data, trend='add')
         fitted_ES = ES.fit()
-        ES_predictions = fitted_ES.forecast(1)
+        prediction = fitted_ES.forecast(steps=1).iloc[0]
     elif best_model == 'ARIMA':
-        prediction = ARIMA.predict(n_periods=1)
+        prediction = ARIMA_model.predict(steps=1).iloc[0]
+    else:
+        raise ValueError("Invalid best model selected.")
 
     past_20_day_avg = stock_data['close'].iloc[-20:].mean()
 
@@ -179,4 +185,5 @@ if __name__ == "__main__":
     stock_data = get_DBdata()
 
     # get stock_data
-    algorithm(stock_data)
+    signal = algorithm(stock_data)
+    print(signal)
