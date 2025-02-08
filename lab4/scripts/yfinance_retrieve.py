@@ -1,9 +1,6 @@
 ﻿import pandas as pd
 import yfinance as yf
-import sqlalchemy as sql
-from sqlalchemy import text
 from datetime import datetime, timedelta
-
 from database import SessionLocal, StockData, TickerIndex
 
 
@@ -80,16 +77,30 @@ def insert_db(data):
         session = SessionLocal()
         records = data.reset_index()[["date", "ticker", "open", "high", "low", "close", "volume"]]
         
-        session.bulk_insert_mappings(StockData, records.to_dict(orient="records"))
-        session.commit()
+        #? Getting the existing (date, ticker) pairs from the database
+        existing = session.query(StockData.date, StockData.ticker).all()
+        existing_set = set(existing)
+        
+        def row_exists(row):
+            dt = row["date"].date() if hasattr(row["date"], "date") else row["date"]
+            return (dt, row["ticker"]) in existing_set
+        
+        #? Filtering out rows that already exist in the database
+        filtered_records = records[~records.apply(row_exists, axis=1)]
+        
+        if not filtered_records.empty:
+            session.bulk_insert_mappings(StockData, filtered_records.to_dict(orient="records"))
+            session.commit()
         
         tickers = data["ticker"].unique()
         for tkr in tickers:
             update_ticker_index(tkr)
     
     except Exception as e:
-        print(f"Filed to insert data: {e}")
+        print(f"\n[ERROR] Failed to insert data: {e}")
         session.rollback()
+    finally:
+        session.close()
 
 
 #* Define a function for ticker index update
@@ -112,8 +123,11 @@ def update_ticker_index(ticker):
             session.commit()
     
     except Exception as e:
-        print(f"Failed to update ticker index: {e}")
+        print(f"\n[ERROR] Failed to update ticker index: {e}")
         session.rollback()
+    finally:
+        session.close()
+
 
 #* Defined function for data removal
 def removingstock(symbol):
@@ -125,13 +139,15 @@ def removingstock(symbol):
         update_ticker_index(symbol)
         
         if result > 0:
-            print(f"Successfully removed {symbol} from database")
+            print(f"\n[INFO] Successfully removed {symbol} from database")
         else:
-            print(f"{symbol} not found in database")
+            print(f"\n[INFO] {symbol} not found in database")
     
     except Exception as e:
-        print(f"Error removing stock: {e}")
+        print(f"\n[ERROR] Error removing stock: {e}")
         session.rollback()
+    finally:
+        session.close()
 
 
 #* Define the function to retrieve historical stock data
@@ -174,7 +190,7 @@ def stock_retrieve(ticker_list, start_date=None, end_date=None):
         return stock_data.set_index("date")
     
     except Exception as e:
-        print(e)
+        print(f"\n[ERROR] Failed to retrieve stock data: {e}")
 
 
 #* Define Workflow Function
@@ -191,7 +207,6 @@ def insert_workflow(ticker_list, start_date=None, end_date=None):
                 update_ticker_index(tkr)
             
             session.commit()
-                    
         #? If start and end date is provided, retrieve data for the specified range
         else:
             start_dateObj = datetime.strptime(start_date, "%Y-%m-%d").date()
@@ -222,9 +237,11 @@ def insert_workflow(ticker_list, start_date=None, end_date=None):
             if all_data:
                 combined_data = pd.concat(all_data)
                 insert_db(combined_data)
-            
-            session.commit()
+        
+        session.close()
     
     except Exception as e:
-        raise ValueError(f"Process failed: {e}")
+        print(f"\n[ERROR] Data insertion failed: {e}")
         session.rollback()
+    finally:
+        session.close()
