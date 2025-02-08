@@ -1,5 +1,4 @@
 ﻿import sys
-import requests
 import pandas as pd
 import yfinance as yf
 import sqlalchemy as sql
@@ -8,6 +7,8 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 
 Base = declarative_base() # Declare the base class for the database
+engine = None
+SessionLocal = None
 
 
 #* Define the StockData Class
@@ -44,11 +45,17 @@ class TickerIndex(Base):
     )
 
 
-# TODO: Define the user asset table class.
+#* Define User Asset Table Class
+class UserAsset(Base):
+    __tablename__ = "user_asset"
+    ticker = sql.Column(sql.String(10), primary_key=True)
+    quantity = sql.Column(sql.Integer)
+    cost_basis = sql.Column(sql.Float)
 
 
 #* Define the function to connect to the database
 def connect_db():
+    global engine, SessionLocal
     try:
         #? Get the database credentials from the user
         db_username = input("Please enter the username for the database: ")
@@ -79,7 +86,6 @@ def connect_db():
         Base.metadata.create_all(bind=engine)
         
         print("Successfully connected to the database!")
-        return engine, SessionLocal
     
     except Exception as e:
         print(f"Connection failed: {e}")
@@ -251,20 +257,15 @@ def workflow(ticker_list, start_date, end_date):
         print(f"Workflow failed: {e}")
         sys.exit(1)
 
-
-# TODO: Define the function for retrieving real-time price data of stocks that are in the database.
-
-# TODO: Define the function for trading transactions.
-
-# TODO: Define the function for calculating the portfolio's total value and total gain/loss. (With the portfolio's composition)
-
-# TODO: Define the function to display the portfolio's total value and total gain/loss in real-time.
-
-# TODO: Define the function for interactive trading interface.
-
+def get_DBdata():
+    with SessionLocal() as session:
+        stock_data = session.query(StockData).all()
+        df = pd.DataFrame([s.__dict__ for s in stock_data])
+        df= df.drop(columns=["_sa_instance_state"], errors="ignore")
+        print(df)
 
 if __name__ == "__main__":
-    engine, SessionLocal = connect_db()
+    connect_db()
     while True:
         print("\nWelcome to the Mock Trading Environment!")
         print("\nYour Options Are:")
@@ -283,8 +284,7 @@ if __name__ == "__main__":
             symbol = input("Enter the stock symbol to remove: ").upper()
             continue
         elif userschoice == "3":
-#            displayingpf()
-            continue
+            get_DBdata()
         elif userschoice == "4":
             print("Goodbye!")
             break

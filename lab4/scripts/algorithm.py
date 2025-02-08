@@ -1,4 +1,4 @@
-from yfinance_retrieve import connect_db
+from yfinance_retrieve import connect_db, SessionLocal, StockData, TickerIndex, get_DBdata
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -105,8 +105,12 @@ if __name__ == "__main__":
     metrics = model_evaluation(stock['ARIMA2'], stock['close'], 'ARIMA2')
 
 
+# Define the function to retrieve data from the database
+# def get_DBdata():
+#     with SessionLocal() as session:
+#         stock_data = session.query(StockData).all()
+#         df = pd.DataFrame([s.__dict__ for s in stock_data])
+#         return(df)
 
-
-
-
-    
+if __name__ == "__main__":
+    get_DBdata()
