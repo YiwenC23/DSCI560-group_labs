@@ -5,86 +5,14 @@ import sqlalchemy as sql
 from sqlalchemy import text
 from datetime import datetime, timedelta
 
-from database import Base, SessionLocal
-
-
-#* Define the StockData Class
-class StockData(Base):
-    #? Define the table name and columns
-    __tablename__ = "stock_data"
-    date = sql.Column(sql.Date, primary_key=True)
-    ticker = sql.Column(sql.String(10), primary_key=True)
-    open = sql.Column(sql.Float)
-    high = sql.Column(sql.Float)
-    low = sql.Column(sql.Float)
-    close = sql.Column(sql.Float)
-    volume = sql.Column(sql.Integer)
-    
-    #? Table Constraints Configuration
-    __table_args__ = (
-        sql.PrimaryKeyConstraint("date", "ticker", name="pk_stock_data"),
-        {"extend_existing": True}    # Allow the table to be extended if it already exists
-    )
-
-
-#* Define Ticker Index Class
-class TickerIndex(Base):
-    __tablename__ = "ticker_index"
-    ticker = sql.Column(sql.String(10), primary_key=True)
-    start_date = sql.Column(sql.Date, index=True)
-    end_date = sql.Column(sql.Date, index=True)
-    
-    #? Table Constraints Configuration
-    __table_args__ = (
-        sql.PrimaryKeyConstraint("ticker", name="pk_ticker_index"),
-        sql.Index("idx_ticker_dates", "ticker", "start_date", "end_date", unique=True),
-        {"extend_existing": True}
-    )
-
-
-#* Define User Asset Table Class
-class UserAsset(Base):
-    __tablename__ = "user_asset"
-    ticker = sql.Column(sql.String(10), primary_key=True) # Ticker symbol
-    datetime = sql.Column(sql.DateTime, primary_key=True) # Purchase date
-    quantity = sql.Column(sql.Integer, nullable=False) # Quantity purchased at a time
-    price = sql.Column(sql.Float, nullable=False) # Purchase price
-    
-    #? Table Constraints Configuration
-    __table_args__ = (
-        sql.PrimaryKeyConstraint("ticker", "datetime", name="pk_userasset"),  # Explicit composite PK
-        sql.ForeignKeyConstraint(["ticker"], ["ticker_index.ticker"], name="fk_userasset_ticker"),
-        sql.Index("idx_userasset_ticker", "ticker"),  # Faster lookups by ticker
-        {"extend_existing": True}
-    )
-    
-    @property
-    def transaction_cost(self): # Total purchase price when a transaction made on a ticker
-        return self.quantity * self.price
-    
-    @classmethod
-    def ticker_total_cost(cls, session, ticker):
-        total = session.query(
-            sql.func.sum(cls.quantity * cls.price)
-        ).filter(
-            cls.ticker == ticker
-        ).scalar()
-        return total
-    
-    @classmethod
-    def total_portfolio_value(cls, session):
-        tickers = session.query(cls.ticker).distinct().all()
-        
-        total_value = 0
-        for (ticker, ) in tickers:
-            total_value += cls.ticker_total_cost(session, ticker)
-        return total_value
+from database import SessionLocal, StockData, TickerIndex
 
 
 #* Define the function for timestamp processing algorithm
-def compare_timestamp(session, tickers_ranges):
+def compare_timestamp(tickers_ranges):
     
     results = {}
+    session = SessionLocal()
     
     #? Ensure tickers_ranges is a list
     if not isinstance(tickers_ranges, list):
@@ -150,46 +78,53 @@ def compare_timestamp(session, tickers_ranges):
 #* Defined function for data insertion
 def insert_db(data):
     try:
-        with SessionLocal() as session:
-            records = data.reset_index()[["date", "ticker", "open", "high", "low", "close", "volume"]]
-            
-            session.bulk_insert_mappings(StockData, records.to_dict(orient="records"))
-            session.commit()
-            print("\nSuccessfully inserted stock data into the database!")
+        session = SessionLocal()
+        records = data.reset_index()[["date", "ticker", "open", "high", "low", "close", "volume"]]
+        
+        session.bulk_insert_mappings(StockData, records.to_dict(orient="records"))
+        session.commit()
+        print("\nSuccessfully inserted stock data into the database!")
     
     except Exception as e:
         print(f"Filed to insert data: {e}")
-        sys.exit(1)
+        session.rollback()
 
 
+#* Defined function for data removal
 def removingstock(symbol):
     try:
-        with SessionLocal() as session:
-            result = session.execute(
-                text("DELETE FROM stock_data WHERE ticker = :symbol"),
-                {"symbol": symbol}
-            )
-            session.commit()
-            if result.rowcount > 0:
-                print(f"Removed {symbol} from database")
-            else:
-                print(f"{symbol} not found in database")
+        session = SessionLocal()
+        result = session.query(StockData).filter(StockData.ticker == symbol).delete()
+        session.commit()
+        
+        if result > 0:
+            print(f"Removed {symbol} from database")
+        else:
+            print(f"{symbol} not found in database")
     except Exception as e:
         print(f"Error removing stock: {e}")
         session.rollback()
 
 
 #* Define the function to retrieve historical stock data
-def stock_retrieve(ticker_list, start_date, end_date):
+def stock_retrieve(ticker_list, start_date=None, end_date=None):
     try:
-        raw_data = yf.download(
-            ticker_list,
-            group_by="Ticker",
-            start=start_date,
-            end=end_date,
-            interval="1d",
-            progress=False
-        )
+        if start_date is None and end_date is None:
+            raw_data = yf.download(
+                ticker_list,
+                group_by="Ticker",
+                interval="1d",
+                progress=False
+            )
+        else:
+            raw_data = yf.download(
+                ticker_list,
+                group_by="Ticker",
+                start=start_date,
+                end=end_date,
+                interval="1d",
+                progress=False
+            )
         
         stock_data = (
             raw_data.stack(level=0, future_stack=True)
@@ -212,53 +147,61 @@ def stock_retrieve(ticker_list, start_date, end_date):
     
     except Exception as e:
         print(e)
-        sys.exit(1)
 
 
 #* Define Workflow Function
-def workflow(ticker_list, start_date, end_date):
+def workflow(ticker_list, start_date=None, end_date=None):
     try:
-        start_dateObj = datetime.strptime(start_date, "%Y-%m-%d").date()
-        end_dateObj = datetime.strptime(end_date, "%Y-%m-%d").date()
+        session = SessionLocal()
         
-        with SessionLocal() as session:
+        #? If no start or end date is provided, retrieve all data
+        if start_date is None and end_date is None:
+            stock_data = stock_retrieve(ticker_list)
+            insert_db(stock_data)
+            
+            return print("Successfully retrieved stock data!")
+        
+        #? If start and end date is provided, retrieve data for the specified range
+        else:
+            start_dateObj = datetime.strptime(start_date, "%Y-%m-%d").date()
+            end_dateObj = datetime.strptime(end_date, "%Y-%m-%d").date()
+            
             ticker_ranges = [(tk, start_dateObj, end_dateObj) for tk in ticker_list]
-            needed_ranges = compare_timestamp(session, ticker_ranges)
+            needed_ranges = compare_timestamp(ticker_ranges)
             
-        all_data = []
-        for tk in ticker_list:
-            needed_tr = needed_ranges.get(tk)
-            print(f"\nRanges for {tk}: {needed_tr}\n")
+            all_data = []
+            for tk in ticker_list:
+                needed_tr = needed_ranges.get(tk)
+                print(f"\nRanges for {tk}: {needed_tr}\n")
+                
+                overall_range = needed_tr["complete_range"]
+                missing_segments = needed_tr["missing_segments"]
+                
+                #! If there are no missing segments (and an index exists), the complete range is already stored.
+                if needed_tr and not missing_segments:
+                    print(f"{tk}: Data from {overall_range[0]} to {overall_range[1]} already exists in the database.")
+                    continue
+                
+                print(f"\n{tk}: Fetching data for complete range {overall_range[0]} to {overall_range[1]}...")
+                #? Fetch the missing segments data and insert into the database
+                for ms in missing_segments:
+                    all_data.append(stock_retrieve([tk], ms[0], ms[1]))
+                
+                print("Successfully retrieved stock data!")
+                #? Update/insert the ticker index with the new complete range
+                new_index = TickerIndex(
+                    ticker=tk,
+                    start_date=overall_range[0],
+                    end_date=overall_range[1]
+                )
+                session.merge(new_index)
             
-            overall_range = needed_tr["complete_range"]
-            missing_segments = needed_tr["missing_segments"]
+            #? If any new data was fetched, combine and insert it into the database
+            if all_data:
+                combined_data = pd.concat(all_data)
+                insert_db(combined_data)
             
-            #! If there are no missing segments (and an index exists), the complete range is already stored.
-            if needed_tr and not missing_segments:
-                print(f"{tk}: Data from {overall_range[0]} to {overall_range[1]} already exists in the database.")
-                continue
-            
-            print(f"\n{tk}: Fetching data for complete range {overall_range[0]} to {overall_range[1]}...")
-            #? Fetch the missing segments data and insert into the database
-            for ms in missing_segments:
-                all_data.append(stock_retrieve([tk], ms[0], ms[1]))
-            
-            print("Successfully retrieved stock data!")
-            #? Update/insert the ticker index with the new complete range
-            new_index = TickerIndex(
-                ticker=tk,
-                start_date=overall_range[0],
-                end_date=overall_range[1]
-            )
-            session.merge(new_index)
-        
-        #? If any new data was fetched, combine and insert it into the database
-        if all_data:
-            combined_data = pd.concat(all_data)
-            insert_db(combined_data)
-        
-        session.commit()
+            session.commit()
     
     except Exception as e:
-        print(f"Workflow failed: {e}")
-        sys.exit(1)
+        print(f"Process failed: {e}")
