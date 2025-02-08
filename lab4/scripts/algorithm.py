@@ -164,7 +164,8 @@ def algorithm(stock_data):
 
         # generate trading signal
         output = decision_signal(metrics, stock_data, ARIMA)
-        return metrics
+        
+        return output
 
     except Exception as e:
         print(f"Failed to run time series forecasting algorithm: {e}")
