@@ -127,7 +127,7 @@ def decision_signal(metrics, stock_data, ARIMA_model):
     else:
         return 'no move'
 
-def algorithm(stock_data, ):
+def algorithm(stock_data):
     try:
         stock_data['date'] = pd.to_datetime(stock_data['date'])
         stock_data = missing_data(stock_data)
