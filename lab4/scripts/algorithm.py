@@ -111,12 +111,12 @@ def decision_signal(metrics, stock_data, ARIMA_model):
     if best_model == 'MA':
         prediction = stock_data['close'].iloc[-3:].mean()
     elif best_model == 'ES':
-        last_10_data = stock_data['close'].iloc[-10:]
-        ES = exponential_smoothing(last_10_data, trend='add')
-        prediction = exponential_smoothing_prediction(ES, steps=1)
+        last_10_data = stock_data['close'].iloc[i-10:i]
+        ES = ExponentialSmoothing(last_10_data, trend='add')
+        fitted_ES = ES.fit()
+        ES_predictions = fitted_ES.forecast(1)
     elif best_model == 'ARIMA':
-        prediction = autoarima_prediction(ARIMA_model, steps = 1)
-
+        prediction = ARIMA.predict(n_periods=1)
 
     past_20_day_avg = stock_data['close'].iloc[-20:].mean()
 
@@ -127,7 +127,7 @@ def decision_signal(metrics, stock_data, ARIMA_model):
     else:
         return 'no move'
 
-def algorithm(stock_data):
+def algorithm(stock_data, ):
     try:
         stock_data['date'] = pd.to_datetime(stock_data['date'])
         stock_data = missing_data(stock_data)
@@ -164,7 +164,7 @@ def algorithm(stock_data):
 
         # generate trading signal
         output = decision_signal(metrics, stock_data, ARIMA)
-        
+
         return output
 
     except Exception as e:
