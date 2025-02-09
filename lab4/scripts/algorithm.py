@@ -95,8 +95,6 @@ def decision_signal(metrics, stock_data, ARIMA_model):
 def algorithm(stock_data):
     try:
         stock_data['date'] = pd.to_datetime(stock_data['date'])
-        # Filter the data to only include the last 2 years
-        stock_data = stock_data[stock_data.index >= (pd.Timestamp.now() - pd.Timedelta(days=730))]
         stock_data = stock_data[['date', 'close']]
         stock_data = missing_data(stock_data)
         stock_data.set_index('date', inplace=True)
