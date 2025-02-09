@@ -95,8 +95,10 @@ def decision_signal(metrics, stock_data, ARIMA_model):
 def algorithm(stock_data):
     try:
         stock_data['date'] = pd.to_datetime(stock_data['date'])
-        stock_data = missing_data(stock_data)
+        if len(stock_data) > 730: # if we have more than 2 years of data, we will only take the most recent 2 years
+            stock_data = stock_data.tail(730)
         stock_data = stock_data[['date', 'close']]
+        stock_data = missing_data(stock_data)
         stock_data.set_index('date', inplace=True)
 
         # determine the seasonality/trend feature of the stock price
