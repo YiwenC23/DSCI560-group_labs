@@ -1,9 +1,14 @@
-﻿import sys
-import sqlalchemy as sql
+﻿import sqlalchemy as sql
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 Base = declarative_base()
+
+#* Define the UserAccounot Class
+class UserAcc(Base):
+    __tablename__ = "user_account"
+    user_id = sql.Column(sql.INTEGER, primary_key=True, autoincrement=True)
+    balance = sql.Column(sql.Float, nullable=False)
 
 #* Define the StockData Class
 class StockData(Base):

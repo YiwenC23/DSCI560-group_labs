@@ -4,7 +4,7 @@ import yfinance as yf
 import sqlalchemy as sql
 import concurrent.futures
 
-from algorithm_test import get_DBdata, algorithm
+from algorithm import get_DBdata, algorithm
 from database import SessionLocal, StockData, TickerIndex, UserAsset, UserAcc
 from yfinance_retrieve import stock_retrieve, removingstock, insert_workflow
 
