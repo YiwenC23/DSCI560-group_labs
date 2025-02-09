@@ -4,6 +4,7 @@ import yfinance as yf
 import sqlalchemy as sql
 import concurrent.futures
 
+from algorithm_test import get_DBdata, algorithm
 from database import SessionLocal, StockData, TickerIndex, UserAsset
 from yfinance_retrieve import stock_retrieve, removingstock, insert_workflow
 
@@ -392,8 +393,35 @@ def main():
             print("\n[ERROR] Invalid option. Please try again.")
 
 
+# TODO: set up the algorithm in the main script
+#* Define the function to get the recent 2 years historical data to training the model and making the prediction
+def data_train():
+    try:
+        session = SessionLocal()
+        
+        #? Get the indexmost recent 2 years historical data of all tickers in the portfolio
+        train_index = 
+        
+        #? Get the training data of the tickers from stock_data table based on the train_index
+        data_train = 
+        
+        return data_train
+
+    except Exception as e:
+        raise ValueError(f"\n[ERROR] Failed to get the training data: {e}")
+
+
+
+# TODO: refresh the display of the portfolio information after each transaction and other operations
+
+# TODO: create a stock market simulator function for testing the trading environment and the algorithm
+
+
 if __name__ == "__main__":
     ticker_list = portfolio_ticker_list()
     tickers_info = parallel_fetch_tickers()
     update_daily_data()
+    hist_data = get_DBdata()
+    decision_signal = algorithm(hist_data)
+    print(decision_signal)
     main()
