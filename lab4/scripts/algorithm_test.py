@@ -98,6 +98,9 @@ def algorithm(stock_data):
         stock_data = missing_data(stock_data)
         stock_data = stock_data[['date', 'close']]
         stock_data.set_index('date', inplace=True)
+        
+        #? Filter the data to only include the last 2 years
+        stock_data = stock_data[stock_data.index >= (pd.Timestamp.now() - pd.Timedelta(days=730))]
 
         # determine the seasonality/trend feature of the stock price
         # plot_acf(stock_data['close'], lags=52)  # Adjust lags as needed
