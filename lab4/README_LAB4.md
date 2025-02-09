@@ -60,3 +60,6 @@ Select one of the above:
 "
 # Freely enter one number based on your needs. The program will take you to the next step with clear instructions; simply follow what the program generates next.
 ```
+
+### Notes
+We include many other programs in the script folder, but they are not necessarily all useful as we mainly use it as a function call reference if we need. You can freely check any other scripts for more information that you are interested in. However, our main scripts for this lab will be ‘algorithm.py’ and ‘mock_trading_env.py’; and everything needed for the mock trading can all be achieved by running the 'mock_trading_env.py'.
