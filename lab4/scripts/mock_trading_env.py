@@ -5,7 +5,7 @@ import sqlalchemy as sql
 import concurrent.futures
 
 from algorithm_test import get_DBdata, algorithm
-from database import SessionLocal, StockData, TickerIndex, UserAsset
+from database import SessionLocal, StockData, TickerIndex, UserAsset, UserAcc
 from yfinance_retrieve import stock_retrieve, removingstock, insert_workflow
 
 
@@ -102,6 +102,10 @@ class Transaction:
             self.session.commit()
             print(f"\n[INFO] Transaction successful ({new_transaction.datetime}): purchased {quantity} shares of {symbol} at {current_price} per share")
             
+            #? Update the user's balance
+            cost = current_price * quantity
+            update_user_balance(-cost)
+            
             return new_transaction
         
         except Exception as e:
@@ -151,6 +155,10 @@ class Transaction:
             self.session.commit()
             print(f"\n[INFO] Transaction successful ({sell_transaction.datetime}): sold {quantity} shares of {symbol} at {current_price} per share")
             
+            #? Update the user's balance
+            income = current_price * quantity
+            update_user_balance(income)
+            
             return sell_transaction
         
         except Exception as e:
@@ -158,6 +166,81 @@ class Transaction:
             self.session.rollback()
         finally:
             self.session.close()
+
+
+#* Define the function to output a transaction signal for each ticker in the portfolio
+def transaction_signal():
+    try:
+        session = SessionLocal()
+        
+        signal_list = {}
+        
+        for tkr in ticker_list:
+            #? Get the historical data for each ticker from the database
+            data_train = get_DBdata()
+            
+            #? Get the prediction of the transaction signal for each ticker
+            trans_signal = algorithm(data_train)
+            
+            signal_list[tkr] = trans_signal
+        
+        return signal_list
+    
+    except Exception as e:
+        print(f"\n[ERROR] Failed to get the transaction signal: {e}")
+    finally:
+        session.close()
+
+
+def init_user_account():
+    session = SessionLocal()
+    try:
+        account = session.query(UserAcc).first()
+        if account is None:
+            while True:
+                init_found = input("Enter your initial funds (skip for default, 1000): ").strip()
+                try:
+                    if init_found:
+                        init_money = float(init_found)
+                        break
+                    else:
+                        init_money = 1000.0
+                        break
+                
+                except ValueError:
+                    print("\n[ERROR] Invalid amount. Please enter a valid number.")
+            
+            account = UserAcc(balance=init_money)
+            session.add(account)
+            session.commit()
+            print(f"\n[INFO] User account has been initialized with {init_money}.")
+        else:
+            print(f"\n[INFO] Welcome back, your current balance is {account.balance}.")
+        return account.balance
+    
+    except Exception as e:
+        print(f"\n[ERROR] Failed to initialize user account: {e}")
+        session.rollback()
+    finally:
+        session.close()
+
+
+def update_user_balance(amount_change):
+    session = SessionLocal()
+    try:
+        account = session.query(UserAcc).first()
+        if account is None:
+            print("\n[ERROR] User account not found.")
+            return
+        
+        account.balance += amount_change
+        session.commit()
+    
+    except Exception as e:
+        print(f"\n[ERROR] Failed to update user balance: {e}")
+        session.rollback()
+    finally:
+        session.close()
 
 
 #* Define the function for calculating real-time total portfolio value and profit/loss.
@@ -173,6 +256,8 @@ def calculate_portfolio_value():
         total_current_value = 0
         portfolio_details = []
         
+        balance = session.query(UserAcc).first().balance if session.query(UserAcc).first().balance is not None else 0.0
+        
         #? Query user's total shares held and total cost for each ticker in the portfolio
         for info in tickers_info:
             ticker = info["ticker"]
@@ -180,7 +265,10 @@ def calculate_portfolio_value():
             
             #! When the stock market is closed, calculate the price based on the previous day's closing price
             if current_price is None:
-                fallback_record = session.query(StockData).filter(StockData.ticker == ticker).order_by(StockData.date.desc()).first()
+                fallback_record = session.query(StockData) \
+                    .filter(StockData.ticker == ticker) \
+                    .order_by(StockData.date.desc()) \
+                    .first()
                 if fallback_record is not None:
                     current_price = fallback_record.close
                     print(f"Using previous day's closing price for {ticker} as current price is unavailable.")
@@ -215,12 +303,19 @@ def calculate_portfolio_value():
         #? Calculate total portfolio value and profit/loss
         total_profit_loss = total_current_value - total_cost
         
+        #? Calculate the annualized returns, and the Sharpe ratio
+        num_stocks = len(portfolio_details) if portfolio_details else 1
+        annualized_return = ((total_current_value / total_cost) ** (252 / num_stocks)) - 1 if total_cost else 0
+        sharpe_ratio = annualized_return / ((0.03 / 252) ** 0.5) if annualized_return else 0
         
         portfolio_summary = {
+            "balance": round(balance, 2),
             "portfolio_details": portfolio_details,
             "total_cost": round(total_cost, 2),
             "total_current_value": round(total_current_value, 2),
-            "total_profit_loss": round(total_profit_loss, 2)
+            "total_profit_loss": round(total_profit_loss, 2),
+            "annualized_return": round(annualized_return, 2),
+            "sharpe_ratio": round(sharpe_ratio, 2)
         }
         
         return portfolio_summary
@@ -264,39 +359,40 @@ def update_daily_data():
 
 #* Define the function to display the portfolio information.
 def display_portfolio_info():
-    try:
-        summary = calculate_portfolio_value()
-        print("\n       Portfolio Summary")
-        
-        if summary and summary.get("portfolio_details"):
-            print("--------------------------------")
-            
-            print("[Overall]")
-            print(f"Cost Basis: {summary['total_cost']} | Total Holdings: {summary['total_current_value']} | Total Gain/Loss: {summary['total_profit_loss']}")
-            print("--------------------------------")
-            
-            print("[Individual Stocks]")
-            for detail in summary["portfolio_details"]:
-                print(f"Ticker: {detail['ticker']} | Latest Price: {detail['current_price']} | Shares: {detail['total_quantity']} | Current Value: {detail['current_value']} | Profit/Loss: {detail['profit_loss']}")
-        
-        else:
-            print("\n[INFO] No portfolio data available.")
-    
-    except Exception as e:
-        raise ValueError(f"\n[ERROR] Failed to display portfolio: {e}")
-
-
-#* Define the function for the transaction interface.
-def transaction_interface():
-    ticker_list = portfolio_ticker_list()
-    
-    if not ticker_list:
-        print("\n[INFO] You do not have any stocks in your portfolio yet.")
-        return
-    
     #? Calculate the portfolio information
     try:
-        summary = calculate_portfolio_value()
+        portfolio_summary = calculate_portfolio_value()
+    except Exception as e:
+        print(f"\n[ERROR] Failed to calculate portfolio value: {e}")
+        return
+    
+    print("\n------------------------------")
+    print("  Portfolio Details")
+    print("------------------------------")
+    if portfolio_summary and portfolio_summary.get("portfolio_details"):
+        for info in portfolio_summary["portfolio_details"]:
+            print(f"Ticker: {info['ticker']}")
+            print(f"  Latest Price: {info['current_price']}")
+            print(f"  Shares: {info['total_quantity']}")
+            print(f"  Cost: {info['ticker_cost']}")
+            print(f"  Market Value: {info['current_value']}")
+            print(f"  Gain/Loss: {info['profit_loss']}")
+            print("-----------------------------")
+    else:
+        print("\n[INFO] No portfolio data available.")
+    
+    main_menu = input("Option: Enter '1' to return to the main menu: ")
+    if main_menu == "1":
+        return
+    else:
+        print("\n[INFO] Invalid option, returning to main menu.")
+
+
+#* Define the function for the portfolio summary.
+def display_portfolio_summary(): 
+    #? Calculate the portfolio information
+    try:
+        portfolio_summary = calculate_portfolio_value()
     except Exception as e:
         print(f"\n[ERROR] Failed to calculate portfolio value: {e}")
         return
@@ -305,56 +401,56 @@ def transaction_interface():
     print("\n------------------------------")
     print("  Current Portfolio Status")
     print("------------------------------")
-    if summary and summary.get("portfolio_details"):
-        for detail in summary["portfolio_details"]:
-            print(f"Ticker: {detail['ticker']}")
-            print(f"  Latest Price: {detail['current_price']}")
-            print(f"  Shares: {detail['total_quantity']}")
-            print(f"  Cost: {detail['ticker_cost']}")
-            print(f"  Market Value: {detail['current_value']}")
-            print(f"  Gain/Loss: {detail['profit_loss']}")
-            print("-----------------------------")
-        print(f"COST BASIS: {summary['total_cost']}")
-        print(f"TOTAL HOLDINGS: {summary['total_current_value']}")
-        print(f"TOTAL GAIN/LOSS: {summary['total_profit_loss']}")
+    if portfolio_summary:
+        print("User: root")
+        print(f"  Balance: {portfolio_summary.get('balance')}")
+        print(f"  Total Cost: {portfolio_summary.get('total_cost')}")
+        print(f"  Total Market Value: {portfolio_summary.get('total_current_value')}")
+        print(f"  Total Gain/Loss: {portfolio_summary.get('total_profit_loss')}")
+        print(f"  Annualized Return: {portfolio_summary.get('annualized_return')}")
+        print(f"  Sharpe Ratio: {portfolio_summary.get('sharpe_ratio')}")
+        print("-----------------------------")
     else:
         print("\n[INFO] No portfolio data available.")
-
-    #? Provide the transaction operation submenu
-    print("\nTransaction Options:")
-    print("1. Buy Stock")
-    print("2. Sell Stock")
-    print("3. Back to Main Menu")
     
-    choice = input("Select an option: ").strip()
     txn = Transaction()  # Apply the Transaction class
+    default_quantity = 10
+    signal_list = transaction_signal()
     
-    if choice == "1":
-        symbol = input("Enter stock symbol to buy: ").upper()
-        qty_input = input("Enter quantity to buy: ").strip()
+    for tkr, signal in signal_list.items():
+        if signal == "buy":
+            print(f"\n[BOT] The current {tkr} price is below the predication price, buying stock...")
+            qty_input = input("Enter quantity to buy (skip for default quantity, 10): ").strip()
+            try:
+                if qty_input:
+                    quantity = int(qty_input)
+                else:
+                    quantity = default_quantity
+                txn.buy(tkr, quantity)
+                print(f"\n[INFO] {tkr} has been purchased for {quantity} shares.")
+            except ValueError as e:
+                print(f"Invalid quantity: {e}")
+                return
         
-        try:
-            quantity = int(qty_input)
-        except ValueError as e:
-            print(f"Invalid quantity: {e}")
+        elif signal == "sell":
+            print(f"\n[BOT] The current {tkr} price is above the predication price, selling stock...")
+            qty_input = input("Enter quantity to sell (skip for default quantity, 10): ").strip()
+            try:
+                if qty_input:
+                    quantity = int(qty_input)
+                else:
+                    quantity = default_quantity
+                txn.sell(tkr, quantity)
+                print(f"\n[INFO] {tkr} has been sold for {quantity} shares.")
+            except ValueError as e:
+                print(f"Invalid quantity: {e}")
+                return
+        
+        else:
             return
         
-        txn.buy(symbol, quantity)
-        
-    elif choice == "2":
-        symbol = input("Enter stock symbol to sell: ").upper()
-        qty_input = input("Enter quantity to sell: ").strip()
-        
-        try:
-            quantity = int(qty_input)
-        except ValueError as e:
-            print(f"Invalid quantity: {e}")
-            return
-        
-        txn.sell(symbol, quantity)
-        
-    elif choice == "3":
-        #? Return to the main menu
+    main_menu = input("Option: Enter '1' to return to the main menu: ")
+    if main_menu == "1":
         return
     else:
         print("\n[INFO] Invalid option, returning to main menu.")
@@ -365,11 +461,11 @@ def main():
         print("\nYour Options Are:")
         print("1. Add stock to portfolio")
         print("2. Remove stock from portfolio")
-        print("3. Display portfolio information")
-        print("4. Enter the transaction interface")
+        print("3. Enter the portfolio information interface")
+        print("4. Enter the portfolio summary interface")
         print("5. Exit")
         
-        userschoice = input("Select one of the above: ")
+        userschoice = input("Select one of the above: ").strip()
         
         if userschoice == "1":
             symbol = input("Enter stock symbol: ").upper()
@@ -384,44 +480,20 @@ def main():
         
         elif userschoice == "3":
             display_portfolio_info()
+        
         elif userschoice == "4":
-            transaction_interface()
+            display_portfolio_summary()
+            
         elif userschoice == "5":
             print("\n[INFO] Goodbye!")
             break
         else:
             print("\n[ERROR] Invalid option. Please try again.")
 
-
-# TODO: set up the algorithm in the main script
-#* Define the function to get the recent 2 years historical data to training the model and making the prediction
-def data_train():
-    try:
-        session = SessionLocal()
-        
-        #? Get the indexmost recent 2 years historical data of all tickers in the portfolio
-        train_index = 
-        
-        #? Get the training data of the tickers from stock_data table based on the train_index
-        data_train = 
-        
-        return data_train
-
-    except Exception as e:
-        raise ValueError(f"\n[ERROR] Failed to get the training data: {e}")
-
-
-
-# TODO: refresh the display of the portfolio information after each transaction and other operations
-
-# TODO: create a stock market simulator function for testing the trading environment and the algorithm
-
-
 if __name__ == "__main__":
+    current_balance = init_user_account()
     ticker_list = portfolio_ticker_list()
     tickers_info = parallel_fetch_tickers()
+    
     update_daily_data()
-    hist_data = get_DBdata()
-    decision_signal = algorithm(hist_data)
-    print(decision_signal)
     main()
