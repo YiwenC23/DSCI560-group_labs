@@ -9,9 +9,6 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-# Example messages (each message is a document)
-df = pd.read_parquet("../lab5/data/processed_data/reddit_datascience.parquet")
-messages = df["content"].tolist()
 
 # Step 2: Train a Doc2Vec model for document embeddings
 def train_doc2vec(messages):
@@ -28,16 +25,10 @@ def train_doc2vec(messages):
 
     return model
 
-# Train the model
-doc2vec_model = train_doc2vec(messages)
-
 # Step 3: Generate embeddings for each document
 def generate_embeddings(model, messages):
     embeddings = [model.infer_vector(simple_preprocess(message)) for message in messages]
     return embeddings
-
-# Generate embeddings
-embeddings = generate_embeddings(doc2vec_model, messages)
 
 # Step 4: Cluster the Embeddings (K-means Example)
 def perform_clustering(embeddings, max_clusters=5):
@@ -61,8 +52,6 @@ def perform_clustering(embeddings, max_clusters=5):
 
     return best_clusters, best_kmeans, optimal_clusters
 
-clusters, kmeans, optimal_clusters = perform_clustering(embeddings, max_clusters=min(10, len(embeddings)-1))
-
 # Step 5: Extract Keywords for Each Cluster (TF-IDF Example)
 def extract_keywords(messages, clusters):
     cluster_messages = {i: [] for i in range(max(clusters) + 1)}
@@ -80,8 +69,6 @@ def extract_keywords(messages, clusters):
         cluster_keywords[cluster] = top_keywords
 
     return cluster_keywords
-
-cluster_keywords = extract_keywords(messages, clusters)
 
 def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_samples=3):
 
@@ -123,3 +110,27 @@ def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_s
             print(f" - {message}")
 
 visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_samples=3)
+
+def algorithm():
+    # extract data
+    df = pd.read_parquet("/home/hanlu-ma/Desktop/lab5/data/processed_data/reddit_datascience.parquet")
+    messages = df["content"].tolist()
+
+    # Train the model
+    doc2vec_model = train_doc2vec(messages)
+
+    # Generate embeddings
+    embeddings = generate_embeddings(doc2vec_model, messages)
+
+    # Use KMeans to do clustering
+    clusters, kmeans, optimal_clusters = perform_clustering(embeddings, max_clusters=min(10, len(embeddings)-1))
+
+    # Extract keywords for each cluster
+    cluster_keywords = extract_keywords(messages, clusters)
+
+    # Visualize the cluster
+    visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_samples=3)
+
+
+if __name__ == "__main__":
+    algorithm()
