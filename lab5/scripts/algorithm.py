@@ -7,17 +7,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
-
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 # Example messages (each message is a document)
-messages = [
-    "This is a sample document about Python programming.",
-    "Another document for training on machine learning.",
-    "Python is great for data science and machine learning.",
-    "I love working with Python and Java.",
-    "Machine learning is the future of technology.",
-    "Data science involves statistics, programming, and domain knowledge."
-]
+df = pd.read_parquet("../lab5/data/processed_data/reddit_datascience.parquet")
+messages = df["content"].tolist()
 
 # Step 2: Train a Doc2Vec model for document embeddings
 def train_doc2vec(messages):
@@ -46,7 +40,7 @@ def generate_embeddings(model, messages):
 embeddings = generate_embeddings(doc2vec_model, messages)
 
 # Step 4: Cluster the Embeddings (K-means Example)
-def perform_clustering(embeddings, max_clusters=10):
+def perform_clustering(embeddings, max_clusters=5):
     best_score = -1  # Silhouette Score ranges from -1 to 1
     optimal_clusters = 2  # At least 2 clusters are needed for Silhouette Score
     best_kmeans = None
@@ -67,7 +61,7 @@ def perform_clustering(embeddings, max_clusters=10):
 
     return best_clusters, best_kmeans, optimal_clusters
 
-clusters, kmeans, optimal_clusters = perform_clustering(embeddings, max_clusters=10)
+clusters, kmeans, optimal_clusters = perform_clustering(embeddings, max_clusters=min(10, len(embeddings)-1))
 
 # Step 5: Extract Keywords for Each Cluster (TF-IDF Example)
 def extract_keywords(messages, clusters):
