@@ -1,17 +1,19 @@
-from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 from sklearn.cluster import KMeans
 import numpy as np
+import pandas as pd
 from nltk.tokenize import word_tokenize
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 import mysql.connector
+
+df = pd.read_parquet("/home/fariha/fariha_9625734353/DSCI560-group_labs/lab5/data/processed_data/reddit_datascience.parquet")
+messages = df["content"].tolist()
 
 # Part 4a: Message Content Abstraction
 class MessageEmbedding:
     def __init__(self, vector_size=100):
         self.vector_size = vector_size
         self.model = None
-    
     def train_doc2vec(self, messages):
         # Prepare documents for training
         tagged_data = [
@@ -124,5 +126,3 @@ def main():
         print(cluster_messages[:3])  # Show first 3 messages from cluster
 if __name__ == "__main__":
     main()
-Last edited 23 hours ago
-
