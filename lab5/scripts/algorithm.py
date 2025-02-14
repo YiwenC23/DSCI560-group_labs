@@ -109,8 +109,6 @@ def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_s
         for message in messages_in_cluster[:top_n_samples]:
             print(f" - {message}")
 
-visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_samples=3)
-
 def algorithm():
     # extract data
     df = pd.read_parquet("/home/hanlu-ma/Desktop/lab5/data/processed_data/reddit_datascience.parquet")
