@@ -70,17 +70,24 @@ def extract_keywords(messages, clusters):
 
     return cluster_keywords
 
-def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_samples=3):
+def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_samples=3, highlight_cluster = None):
 
-    # Step 1: Reduce dimensionality using PCA
+    # Reduce dimensionality using PCA
     pca = PCA(n_components=2)
     reduced_embeddings = pca.fit_transform(embeddings)
 
-    # Step 2: Plot clusters
+    # Plot clusters
     plt.figure(figsize=(10, 8))
+
+    # Highlight the closest cluster
+    if highlight_cluster is not None:
+        highlight_indices = [i for i, c in enumerate(clusters) if c == highlight_cluster]
+        plt.scatter(reduced_embeddings[highlight_indices, 0], reduced_embeddings[highlight_indices, 1], c='red', label=f'Cluster {highlight_cluster} (Closest)', alpha=0.8)
+
+    # Plot all clusters
     scatter = plt.scatter(reduced_embeddings[:, 0], reduced_embeddings[:, 1], c=clusters, cmap='viridis', alpha=0.6)
 
-    # Step 3: Annotate clusters with top keywords
+    # Annotate clusters with top keywords
     for cluster in cluster_keywords:
         # Get the centroid of the cluster
         cluster_indices = [i for i, c in enumerate(clusters) if c == cluster]
@@ -98,7 +105,7 @@ def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_s
     plt.title("Cluster Visualization with Keywords")
     plt.show()
 
-    # Step 4: Verify cluster similarity by displaying sample messages
+    # Verify cluster similarity by displaying sample messages
     print("\nVerifying Cluster Similarity:")
     cluster_messages = {i: [] for i in range(max(clusters) + 1)}
     for i, cluster in enumerate(clusters):
@@ -108,6 +115,32 @@ def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_s
         print(f"\nCluster {cluster} Sample Messages:")
         for message in messages_in_cluster[:top_n_samples]:
             print(f" - {message}")
+
+# Find the closest cluster
+def find_closest_cluster(input_message, doc2vec_model, embeddings, clusters, cluster_keywords, messages):
+    # Preprocess the input message
+    cleaned_input = simple_preprocess(input_message)
+
+    # Generate embedding for the input message
+    input_embedding = doc2vec_model.infer_vector(cleaned_input)
+
+    # Find the closest cluster
+    closest_cluster = None
+    min_distance = float('inf')
+    for i, embedding in enumerate(embeddings):
+        distance = np.linalg.norm(np.array(embedding) - np.array(input_embedding))
+        if distance < min_distance:
+            min_distance = distance
+            closest_cluster = clusters[i]
+
+    # Display messages from the closest cluster
+    print(f"\nMessages from Cluster {closest_cluster}:")
+    for i, cluster in enumerate(clusters):
+        if cluster == closest_cluster:
+            print(f" - {messages[i]}")
+
+    # Visualize the clusters with the closest cluster highlighted
+    visualize_clusters(embeddings, clusters, cluster_keywords, messages, highlight_cluster=closest_cluster)
 
 def algorithm():
     # extract data
@@ -129,6 +162,14 @@ def algorithm():
     # Visualize the cluster
     visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_samples=3)
 
+    while True:
+        user_input = input("\nEnter a keyword or message to find the closest cluster (or 'exit' to quit): ")
+        if user_input.lower() == 'exit':
+            break
+        find_closest_cluster(user_input, doc2vec_model, embeddings, clusters, cluster_keywords, messages)
+
+
 
 if __name__ == "__main__":
     algorithm()
+
