@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import TfidfVectorizer
 import random
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.cluster import AgglomerativeClustering
 
 random.seed(42)
 np.random.seed(42)
