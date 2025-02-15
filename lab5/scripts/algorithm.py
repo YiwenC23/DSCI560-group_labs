@@ -111,6 +111,7 @@ def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_s
     # Verify cluster similarity by displaying sample messages
     print("\nVerifying Cluster Similarity:")
     if highlight_cluster is not None:
+        cluster_messages = [messages[i] for i, c in enumerate(kmeans.labels_) if c == closest_cluster]
         for message in cluster_messages[:top_n_samples]: 
             print(f" - {message}")
     else:
@@ -145,6 +146,9 @@ def find_closest_cluster(input_message, doc2vec_model, embeddings, clusters, clu
     for i, cluster in enumerate(clusters):
         if cluster == closest_cluster:
             print(f" - {messages[i]}")
+            count += 1
+            if count == 3:  # Stop after printing 3 messages
+                break
 
     # Visualize the clusters with the closest cluster highlighted
     visualize_clusters(embeddings, clusters, cluster_keywords, messages, highlight_cluster=closest_cluster)
