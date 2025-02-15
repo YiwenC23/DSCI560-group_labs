@@ -1,3 +1,7 @@
+import os
+import re
+import spacy
+from nltk.corpus import stopwords
 from gensim.models import Doc2Vec
 from gensim.utils import simple_preprocess
 from gensim.models.doc2vec import TaggedDocument
@@ -11,28 +15,29 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import random
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import AgglomerativeClustering
+from database import SessionLocal, PostInfo
+from sqlalchemy import select
 
-random.seed(42)
 np.random.seed(42)
 
 # Step 2: Train a Doc2Vec model for document embeddings
-def train_doc2vec(messages):
+def train_doc2vec(tagged_docs):
     # Tokenize messages: "This is a sample document about Python programming!" --> ['this', 'is', 'sample', 'document', 'about', 'python', 'programming']
-    tokenized_messages = [simple_preprocess(message) for message in messages]
+#    tokenized_messages = [simple_preprocess(message) for message in messages]
 
     # Prepare tagged documents for doc2vec: ['this', 'is', 'sample', 'document', 'about', 'python', 'programming'] --> TaggedDocument(words=['this', 'is', 'sample', 'document', 'about', 'python', 'programming'], tags=['0'])
-    tagged_data = [TaggedDocument(words=words, tags=[str(i)]) for i, words in enumerate(tokenized_messages)]
+#    tagged_data = [TaggedDocument(words=words, tags=[str(i)]) for i, words in enumerate(tokenized_messages)]
 
     # Train doc2vec model
     model = Doc2Vec(vector_size=50, min_count=2, epochs=40, seed=42)
-    model.build_vocab(tagged_data)
-    model.train(tagged_data, total_examples=model.corpus_count, epochs=model.epochs)
+    model.build_vocab(tagged_docs)
+    model.train(tagged_docs, total_examples=model.corpus_count, epochs=model.epochs)
 
     return model
 
 # Step 3: Generate embeddings for each document
-def generate_embeddings(model, messages):
-    embeddings = [model.infer_vector(simple_preprocess(message)) for message in messages]
+def generate_embeddings(model, tagged_docs):
+    embeddings = [model.infer_vector(doc.words) for doc in tagged_docs]
     return embeddings
 
 # Step 4: Cluster the Embeddings (K-means Example)
@@ -58,16 +63,17 @@ def perform_clustering(embeddings, max_clusters):
     return best_clusters, best_kmeans, optimal_clusters
 
 # Step 5: Extract Keywords for Each Cluster (TF-IDF Example)
-def extract_keywords(messages, clusters):
+def extract_keywords(tagged_docs, clusters):
     cluster_messages = {i: [] for i in range(max(clusters) + 1)}
     for i, cluster in enumerate(clusters):
-        cluster_messages[cluster].append(messages[i])
+        cluster_messages[cluster].append(tagged_docs[i])
 
     # Extract keywords using TF-IDF
     cluster_keywords = {}
     for cluster, messages_in_cluster in cluster_messages.items():
+        messages_str = [" ".join(doc.words) if hasattr(doc, "words") else doc for doc in messages_in_cluster]
         vectorizer = TfidfVectorizer(stop_words='english')
-        tfidf_matrix = vectorizer.fit_transform(messages_in_cluster)
+        tfidf_matrix = vectorizer.fit_transform(messages_str)
         feature_names = vectorizer.get_feature_names_out()
         tfidf_scores = tfidf_matrix.sum(axis=0).A1
         top_keywords = [feature_names[i] for i in tfidf_scores.argsort()[-5:][::-1]]
@@ -155,32 +161,48 @@ def find_closest_cluster(input_message, doc2vec_model, embeddings, clusters, clu
 
 def algorithm():
     # extract data
-    df = pd.read_parquet("/home/hanlu-ma/Desktop/lab5/data/processed_data/reddit_datascience.parquet")
-    messages = df["content"].tolist()
+    session = SessionLocal()
+    file_paths = session.execute(select(PostInfo.file_path)).scalars().all()
+    nlp = spacy.load("en_core_web_sm")
+    rm_words_list = ["use", "data", "like", "just"]
+    posts = []
+    for file_path in file_paths:
+        post_id = file_path.split("/")[-1].split(".")[0]
+        with open(file_path, "r", encoding="utf-8") as f:
+            text = f.read()
+            text = re.sub(r"http\S+|www\S+|[^a-zA-Z\s]", "", text)
+            tokens = simple_preprocess(text, deacc=True)
+            tokens = [word for word in tokens if word not in stop_words]
+            tokens = [token.lemma_ for token in nlp(" ".join(tokens))]
+            tokens = [word for word in tokens if word not in rm_words_list]
+            posts.append(TaggedDocument(tokens, [post_id]))
 
     # Train the model
-    doc2vec_model = train_doc2vec(messages)
+    doc2vec_model = train_doc2vec(posts)
 
     # Generate embeddings
-    embeddings = generate_embeddings(doc2vec_model, messages)
+    embeddings = generate_embeddings(doc2vec_model, posts)
 
     # Use KMeans to do clustering
     clusters, kmeans, optimal_clusters = perform_clustering(embeddings, max_clusters=min(10, len(embeddings)-1))
 
     # Extract keywords for each cluster
-    cluster_keywords = extract_keywords(messages, clusters)
+    cluster_keywords = extract_keywords(posts, clusters)
 
     # Visualize the cluster
-    visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_samples=3)
+    visualize_clusters(embeddings, clusters, cluster_keywords, posts, top_n_samples=3)
 
     while True:
         user_input = input("\nEnter a keyword or message to find the closest cluster (or 'exit' to quit): ")
         if user_input.lower() == 'exit':
             break
-        find_closest_cluster(user_input, doc2vec_model, embeddings, clusters, cluster_keywords, messages)
+        find_closest_cluster(user_input, doc2vec_model, embeddings, clusters, cluster_keywords, posts)
 
 
 
 if __name__ == "__main__":
+    CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+    stop_words_path = os.path.join(CURRENT_DIR, "./test/output/stopwords/")
+    stop_words = set(stopwords.words("english"))
     algorithm()
 
