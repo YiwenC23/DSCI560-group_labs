@@ -5,18 +5,21 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 Base = declarative_base()
 
 #* Define the Raw Data Table Class
-class RawData(Base):
-    __tablename__ = "raw_data"
-    id = sql.Column(sql.Integer, primary_key=True)
-    filename = sql.Column(sql.String(255), nullable=False)
-    file_path = sql.Column(sql.String(255), nullable=False)
+class PostInfo(Base):
+    __tablename__ = "post_info"
+    post_id = sql.Column(sql.String(255), primary_key=True, index=True)
+    title = sql.Column(sql.String(255))
+    author_id = sql.Column(sql.String(255))
+    comment_count = sql.Column(sql.Integer)
+    datetime = sql.Column(sql.DateTime)
+    url = sql.Column(sql.String(255))
+    file_path = sql.Column(sql.String(255))
+    
+    __table_args__ = (
+        sql.Index("idx_post_info_post_id", "post_id", unique=True),
+        {"extend_existing": True}
+    )
 
-#* Define the Processed Data Table Class
-class ProcessedData(Base):
-    __tablename__ = "processed_data"
-    id = sql.Column(sql.Integer, primary_key=True)
-    filename = sql.Column(sql.String(255), nullable=False)
-    file_path = sql.Column(sql.String(255), nullable=False)
 
 #* Define the function to connect to the database
 def connect_db():

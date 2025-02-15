@@ -2,12 +2,10 @@
 import re
 import sys
 import time
-import json
 import openai
 import asyncio
-import pandas as pd
-import pyarrow as pa
-import sqlalchemy as sql
+import requests
+import pprint as pp
 from pyzerox import zerox
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -16,14 +14,12 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.common.exceptions import TimeoutException, WebDriverException
 
-# from database import SessionLocal, RawData
+from database import SessionLocal, PostInfo
 
 
-#* TODO: Define the function to retrieve the data from the reddit
-def data_retrieval(post_cnt=1000):
+#* Define the function to retrieve the data from the reddit
+def post_retrieval(url, post_cnt):
     global post_dict
-    
-    url = "https://www.reddit.com/r/datascience/"
     
     options = webdriver.ChromeOptions()
     
@@ -56,8 +52,8 @@ def data_retrieval(post_cnt=1000):
         try:
             page = driver.page_source
             soup = BeautifulSoup(page, "html.parser")
-
-            post_dict = data_preprocessing(soup)
+           
+            post_dict = post_preprocessing(soup)
             
             current_cnt = len(post_dict)
             print(f"Retrieved {current_cnt} posts")
@@ -80,7 +76,7 @@ def data_retrieval(post_cnt=1000):
             if attempts >= max_attempts:
                 time.sleep(10)
             continue
-            
+        
         except WebDriverException as e:
             print(f"\nBrowser error: {e}")
             break
@@ -89,12 +85,11 @@ def data_retrieval(post_cnt=1000):
     return post_dict
 
 
-#* TODO: Define the function to preprocess the data
-def data_preprocessing(soup):
+#* Define the function to preprocess the data
+def post_preprocessing(soup):
     global post_dict
     
     articles = soup.find_all("article")
-    
     for article in articles:
         post = article.find("shreddit-post")
         
@@ -126,7 +121,6 @@ def data_preprocessing(soup):
         #? Extract and preprocess the datetime
         dt = post.get("created-timestamp")
         dt_obj = datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S.%f%z")
-        dt_str = dt_obj.strftime("%Y-%m-%d %H:%M:%S")
         
         #? Add the post to the dictionary
         post_dict[post_id] = {
@@ -135,24 +129,165 @@ def data_preprocessing(soup):
             "author_id": author_id,
             "content": content,
             "comment_count": comment_cnt,
-            "datetime": dt_str,
+            "datetime": dt_obj,
             "url": post_url
         }
     
     return post_dict
 
 
-#* TODO: Define the function store the data into parquet file
-def store_data(data, output_path):
-    df = pd.DataFrame.from_dict(data, orient="index")
-    df = df.reset_index().drop(columns=["index"])
-    df.to_parquet(output_path)
+#* Define the function to retrieve the comments
+def comment_retrieval(base_url, id):
+    reddit_url = base_url.replace("r/datascience/", "")
+    post_id = id.replace("t3_", "")
+    comment_url = reddit_url + "comments/" + post_id + ".json"
+    print(f"\nRequesting: {comment_url}")
+    
+    headers = {"Accept": "*/*"}
+    response = None
+    sleep_time = 3
+    
+    while True:
+        try:
+            response = requests.get(comment_url, headers=headers, timeout=60)
+        except requests.RequestException as e:
+            print(f"Request error for {post_id}: {e}")
+            time.sleep(sleep_time)
+            sleep_time *= 2
+            continue
+        
+        if response.status_code == 200:
+            print(f"Successfully retrieved {post_id} comments!")
+            break
+        
+        elif response.status_code == 429:
+            retry_after = response.headers.get("Retry-After")
+            if retry_after:
+                wait_time = int(retry_after)
+            else:
+                wait_time = sleep_time
+            
+            print(f"Rate limit reached ({response.status_code}) for {post_id}. Sleeping for {wait_time} seconds before retrying...")
+            time.sleep(wait_time)
+            sleep_time *= 2
+        else:
+            print(f"Failed to retrieve {post_id} comments for {response.status_code}, retrying...")
+            time.sleep(sleep_time)
+            sleep_time *= 2
+    
+    try:
+        comments_data = response.json()
+        pp.pformat(comments_data, indent=4)
+    except ValueError as e:
+        print(f"Error decoding JSON: {e}")
+        return None
+    
+    return comments_data
+
+
+def extract_comment_text(comments):
+    text_list = []
+    
+    if isinstance(comments, dict) and "data" in comments:
+        comment_data = comments["data"]
+        
+        if comments.get("kind") == "t1" and "body" in comment_data:
+            text_list.append(comment_data["body"])
+        
+        children = comment_data.get("children", [])
+        if isinstance(children, list):
+            for child in children:
+                text_list.extend(extract_comment_text(child))
+        
+        replies = comment_data.get("replies")
+        if replies and isinstance(replies, dict):
+            replies_data = replies.get("data", {})
+            reply_children = replies_data.get("children", [])
+            if isinstance(reply_children, list):
+                for reply in reply_children:
+                    text_list.extend(extract_comment_text(reply))
+    
+    elif isinstance(comments, list):
+        for item in comments:
+            text_list.extend(extract_comment_text(item))
+    
+    return text_list
+
+
+def comment_preprocessing(comments):
+    comment_dict = {}
+    
+    if comments:
+        for i, comment in enumerate(comments):
+            text = re.sub(r"\s+", " ", comment).strip()
+            comment_dict[i] = text
+    
+    return comment_dict
+
+
+#* Define the function store the data into parquet file
+def store_data(post_id, comment_dict, output_path):
+    global post_dict
+    
+    session = SessionLocal()
+    post_title = post_dict[post_id]["title"]
+    post_text = post_dict[post_id]["content"]
+    
+    file_path = os.path.join(output_path, f"{post_id}.txt")
+    with open(file_path, "w") as f:
+        f.write(f"{post_title}\n\n")
+        f.write(f"{post_text}\n\n")
+        if comment_dict:
+            for i, comment in comment_dict.items():
+                f.write(f"{i+1}. {comment}\n\n")
+    
+    try:
+        existing_post = session.query(PostInfo).filter_by(post_id=post_id).first()
+        if existing_post:
+                existing_post.title = post_title
+                existing_post.author_id = post_dict[post_id]["author_id"]
+                existing_post.comment_count = post_dict[post_id]["comment_count"]
+                existing_post.datetime = post_dict[post_id]["datetime"]
+                existing_post.url = post_dict[post_id]["url"]
+                existing_post.file_path = file_path
+        else:
+            session.add(PostInfo(
+                post_id=post_id,
+                title=post_title,
+                author_id=post_dict[post_id]["author_id"],
+                comment_count=post_dict[post_id]["comment_count"],
+                datetime=post_dict[post_id]["datetime"],
+                url=post_dict[post_id]["url"],
+                file_path=file_path
+            ))
+        
+        session.commit()
+    
+    except Exception as e:
+        print(f"Failed to store data: {e}")
+    finally:
+        session.close()
+
+
+#* Define the main function
+def workflow():
+    global post_dict, post_cnt
+    
+    post_retrieval(base_url, post_cnt)
+    for post_id in post_dict.keys():
+        comments = comment_retrieval(base_url, post_id)
+        time.sleep(1)
+        comment_list = extract_comment_text(comments)
+        if comment_list is None:
+            continue
+        comment_dict = comment_preprocessing(comment_list)
+        store_data(post_id, comment_dict, output_path)
 
 
 if __name__ == "__main__":
     CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-    output_path = os.path.join(CURRENT_DIR, "../data/processed_data/reddit_datascience.parquet")
-    
+    output_path = os.path.join(CURRENT_DIR, "../data/processed_data/")
     post_dict = {}
-    data = data_retrieval()
-    store_data(data, output_path)
+    post_cnt = 1000
+    base_url = "https://www.reddit.com/r/datascience/"
+    workflow()
