@@ -8,9 +8,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import TfidfVectorizer
+import random
 
 random.seed(42)
 np.random.seed(42)
+
 # Step 2: Train a Doc2Vec model for document embeddings
 def train_doc2vec(messages):
     # Tokenize messages: "This is a sample document about Python programming!" --> ['this', 'is', 'sample', 'document', 'about', 'python', 'programming']
@@ -83,7 +85,7 @@ def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_s
     # Highlight the closest cluster
     if highlight_cluster is not None:
         highlight_indices = [i for i, c in enumerate(clusters) if c == highlight_cluster]
-        plt.scatter(reduced_embeddings[highlight_indices, 0], reduced_embeddings[highlight_indices, 1], c='red', label=f'Cluster {highlight_cluster} (Closest)', alpha=0.8)
+        plt.scatter(reduced_embeddings[highlight_indices, 0], reduced_embeddings[highlight_indices, 1], c='red', s=100, edgecolor='black', linewidth=2, label=f'Cluster {highlight_cluster} (Closest)', alpha=0.8)
 
     # Plot all clusters
     scatter = plt.scatter(reduced_embeddings[:, 0], reduced_embeddings[:, 1], c=clusters, cmap='viridis', alpha=0.6)
