@@ -34,7 +34,7 @@ def generate_embeddings(model, messages):
     return embeddings
 
 # Step 4: Cluster the Embeddings (K-means Example)
-def perform_clustering(embeddings, max_clusters=5):
+def perform_clustering(embeddings, max_clusters):
     best_score = -1  # Silhouette Score ranges from -1 to 1
     optimal_clusters = 2  # At least 2 clusters are needed for Silhouette Score
     best_kmeans = None
@@ -74,7 +74,6 @@ def extract_keywords(messages, clusters):
     return cluster_keywords
 
 def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_samples=3, highlight_cluster = None):
-
     # Reduce dimensionality using PCA
     pca = PCA(n_components=2)
     reduced_embeddings = pca.fit_transform(embeddings)
@@ -85,10 +84,12 @@ def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_s
     # Highlight the closest cluster
     if highlight_cluster is not None:
         highlight_indices = [i for i, c in enumerate(clusters) if c == highlight_cluster]
-        plt.scatter(reduced_embeddings[highlight_indices, 0], reduced_embeddings[highlight_indices, 1], c='red', s=100, edgecolor='black', linewidth=2, label=f'Cluster {highlight_cluster} (Closest)', alpha=0.8)
+        plt.scatter(reduced_embeddings[highlight_indices, 0], reduced_embeddings[highlight_indices, 1], c='grey', s=100, edgecolor='black', linewidth=2, label=f'Cluster {highlight_cluster} (Closest)', alpha=0.8)
+        plt.scatter(reduced_embeddings[:, 0], reduced_embeddings[:, 1], c=clusters, cmap='viridis', alpha=0.5, label='Other Clusters')
+
 
     # Plot all clusters
-    scatter = plt.scatter(reduced_embeddings[:, 0], reduced_embeddings[:, 1], c=clusters, cmap='viridis', alpha=0.6)
+    scatter = plt.scatter(reduced_embeddings[:, 0], reduced_embeddings[:, 1], c=clusters, cmap='viridis', alpha=0.8)
 
     # Annotate clusters with top keywords
     for cluster in cluster_keywords:
@@ -98,8 +99,13 @@ def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_s
 
         # Annotate the centroid with top keywords
         keywords = ", ".join(cluster_keywords[cluster])
-        plt.text(centroid[0], centroid[1], f"Cluster {cluster}\nKeywords: {keywords}", 
-                 fontsize=10, ha='center', va='center', bbox=dict(facecolor='white', alpha=0.8))
+
+        # Define the annotation position at the left-bottom corner
+        x_offset = 0.05  # Adjust as needed for positioning
+        y_offset = 0.05  # Adjust as needed for positioning
+
+        # Place the annotation near the bottom-left corner
+        plt.text(centroid[0] + x_offset, centroid[1] + y_offset, f"Cluster {cluster}\nKeywords: {keywords}", fontsize=10, ha='left', va='bottom', bbox=dict(facecolor='white', alpha=0.8))
 
     # Add legend and labels
     plt.legend(*scatter.legend_elements(), title="Clusters")
@@ -109,12 +115,8 @@ def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_s
     plt.show()
 
     # Verify cluster similarity by displaying sample messages
-    print("\nVerifying Cluster Similarity:")
-    if highlight_cluster is not None:
-        cluster_messages = [messages[i] for i, c in enumerate(kmeans.labels_) if c == closest_cluster]
-        for message in cluster_messages[:top_n_samples]: 
-            print(f" - {message}")
-    else:
+    if highlight_cluster is None:
+        print("\nVerifying Cluster Similarity:")
         cluster_messages = {i: [] for i in range(max(clusters) + 1)}
         for i, cluster in enumerate(clusters):
             cluster_messages[cluster].append(messages[i])
@@ -141,6 +143,7 @@ def find_closest_cluster(input_message, doc2vec_model, embeddings, clusters, clu
             min_distance = distance
             closest_cluster = clusters[i]
 
+    count = 0
     # Display messages from the closest cluster
     print(f"\nMessages from Cluster {closest_cluster}:")
     for i, cluster in enumerate(clusters):
