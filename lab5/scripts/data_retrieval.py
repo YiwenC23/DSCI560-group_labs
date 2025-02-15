@@ -60,7 +60,7 @@ def post_retrieval(url, post_cnt):
             
             #? Scroll down to the bottom of the page
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(3)
+            time.sleep(10)
             
             new_height = driver.execute_script("return document.body.scrollHeight")
             if new_height == last_height:
