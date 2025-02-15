@@ -127,7 +127,7 @@ def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_s
                 print(f" - {message}")
 
 # Find the closest cluster
-def find_closest_cluster(input_message, doc2vec_model, embeddings, clusters, cluster_keywords, messages):
+# def find_closest_cluster(input_message, doc2vec_model, embeddings, clusters, cluster_keywords, messages):
     # Preprocess the input message
     cleaned_input = simple_preprocess(input_message)
 
@@ -155,8 +155,30 @@ def find_closest_cluster(input_message, doc2vec_model, embeddings, clusters, clu
 
     # Visualize the clusters with the closest cluster highlighted
     visualize_clusters(embeddings, clusters, cluster_keywords, messages, highlight_cluster=closest_cluster)
+def find_closest_cluster(input_message, doc2vec_model, kmeans, clusters, cluster_keywords, messages):
+    # Preprocess the input message
+    cleaned_input = simple_preprocess(input_message)
 
-def algorithm():
+    # Generate embedding for the input message
+    input_embedding = doc2vec_model.infer_vector(cleaned_input)
+
+    # Find the closest cluster centroid
+    closest_cluster = kmeans.predict([input_embedding])[0]
+
+    # Display messages from the closest cluster
+    print(f"\nMessages from Cluster {closest_cluster}:")
+    count = 0
+    for i, cluster in enumerate(clusters):
+        if cluster == closest_cluster:
+            print(f" - {messages[i]}")
+            count += 1
+            if count == 3:  # Stop after printing 3 messages
+                break
+
+    # Visualize the clusters with the closest cluster highlighted
+    visualize_clusters(embeddings, clusters, cluster_keywords, messages, highlight_cluster=closest_cluster)
+
+# def algorithm():
     # extract data
     df = pd.read_parquet("/home/hanlu-ma/Desktop/lab5/data/processed_data/reddit_datascience.parquet")
     messages = df["content"].tolist()
@@ -181,7 +203,31 @@ def algorithm():
         if user_input.lower() == 'exit':
             break
         find_closest_cluster(user_input, doc2vec_model, embeddings, clusters, cluster_keywords, messages)
+def algorithm():
+    # Extract data
+    df = pd.read_parquet("/home/hanlu-ma/Desktop/lab5/data/processed_data/reddit_datascience.parquet")
+    messages = df["content"].tolist()
 
+    # Train the model
+    doc2vec_model = train_doc2vec(messages)
+
+    # Generate embeddings
+    embeddings = generate_embeddings(doc2vec_model, messages)
+
+    # Use KMeans to do clustering
+    clusters, kmeans, optimal_clusters = perform_clustering(embeddings, max_clusters=min(10, len(embeddings)-1))
+
+    # Extract keywords for each cluster
+    cluster_keywords = extract_keywords(messages, clusters)
+
+    # Visualize the cluster
+    visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_samples=3)
+
+    while True:
+        user_input = input("\nEnter a keyword or message to find the closest cluster (or 'exit' to quit): ")
+        if user_input.lower() == 'exit':
+            break
+        find_closest_cluster(user_input, doc2vec_model, kmeans, clusters, cluster_keywords, messages)
 
 
 if __name__ == "__main__":
