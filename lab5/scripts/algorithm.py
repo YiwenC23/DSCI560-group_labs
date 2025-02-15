@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-
+random.seed(42)
+np.random.seed(42)
 # Step 2: Train a Doc2Vec model for document embeddings
 def train_doc2vec(messages):
     # Tokenize messages: "This is a sample document about Python programming!" --> ['this', 'is', 'sample', 'document', 'about', 'python', 'programming']
@@ -19,7 +20,7 @@ def train_doc2vec(messages):
     tagged_data = [TaggedDocument(words=words, tags=[str(i)]) for i, words in enumerate(tokenized_messages)]
 
     # Train doc2vec model
-    model = Doc2Vec(vector_size=50, min_count=2, epochs=40)
+    model = Doc2Vec(vector_size=50, min_count=2, epochs=40, seed=42)
     model.build_vocab(tagged_data)
     model.train(tagged_data, total_examples=model.corpus_count, epochs=model.epochs)
 
