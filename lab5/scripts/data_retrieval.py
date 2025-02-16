@@ -40,6 +40,7 @@ def post_retrieval(post_cnt):
     current_cnt = 0
     attempts = 0
     max_attempts = 5
+    #? mimic the scrolling behavior of the human
     last_height = driver.execute_script("return document.body.scrollHeight")
     
     while current_cnt < post_cnt:
@@ -52,6 +53,12 @@ def post_retrieval(post_cnt):
             post_dict = post_preprocessing(soup)
             
             current_cnt = len(post_dict)
+            if current_cnt > post_cnt:
+                overflow = current_cnt - post_cnt
+                post_dict = dict(list(post_dict.items())[:-overflow])
+                break
+            elif current_cnt == post_cnt:
+                break
             
             #? Scroll down to the bottom of the page
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -279,6 +286,11 @@ def workflow(post_cnt):
     print("\n[INFO] Preprocessing the post data...")
     comment_preprocessing()
     print("[INFO] Successfully preprocessed the post data!")
+    
+    print("\n[INFO] Storing the data into txt file...")
+    for post_id in post_dict.keys():
+        store_data(post_id, output_path)
+    print("[INFO] Successfully stored the data into txt file!")
 
 
 if __name__ == "__main__":
