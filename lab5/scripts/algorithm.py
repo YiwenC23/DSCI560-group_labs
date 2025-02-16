@@ -207,8 +207,8 @@ def algorithm():
 
 
 if __name__ == "__main__":
-    CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-    stop_words_path = os.path.join(CURRENT_DIR, "./test/output/stopwords/")
+    # CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+    # stop_words_path = os.path.join(CURRENT_DIR, "./test/output/stopwords/")
     stop_words = set(stopwords.words("english"))
     algorithm()
 
