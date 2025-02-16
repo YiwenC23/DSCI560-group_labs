@@ -2,7 +2,6 @@
 import os
 import sys
 import time
-import pickle
 from database import SessionLocal, PostInfo
 from algorithm import algorithm
 from data_retrieval import comment_retrieval, extract_comment_text
