@@ -8,6 +8,8 @@ from data_retrieval import comment_retrieval, extract_comment_text
 
 def update_database(updating_time):
     
+    post_updated = []
+    
     allowed_time = int(updating_time) * 60
     start_time = time.time()
     
@@ -17,7 +19,7 @@ def update_database(updating_time):
     
     for post_id in post_ids:
         if time.time() - start_time > allowed_time:
-            print(f"[INFO] Time limit of {updating_time} minutes reached. Stopping the update...")
+            print(f"\n[INFO] Time limit of {updating_time} minutes reached. Stopping the update...")
             break
         
         comment_json = comment_retrieval(base_url, post_id)
@@ -43,8 +45,9 @@ def update_database(updating_time):
                             f.write(f"{comment}\n\n")
                     
                     PostInfo.update_comment_count(session, post_id, new_comment_count)
-    
+                    post_updated.append(post_id)
     session.close()
+    return post_updated
 
 
 if __name__ == "__main__":
@@ -53,4 +56,12 @@ if __name__ == "__main__":
     base_url = "https://www.reddit.com/r/datascience/"
     
     updating_time = sys.argv[1]
-    update_database(updating_time)
+    
+    print("\n[INFO] Updating the database...")
+    post_updated = update_database(updating_time)
+    
+    if post_updated:
+        print("[INFO] Successfully updated the following posts:")
+        for post_id in post_updated:
+            print(f"- {post_id}")
+    
