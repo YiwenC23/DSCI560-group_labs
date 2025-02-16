@@ -2,8 +2,9 @@
 import os
 import sys
 import time
-
+import pickle
 from database import SessionLocal, PostInfo
+from algorithm import algorithm
 from data_retrieval import comment_retrieval, extract_comment_text
 
 def update_database(updating_time):
@@ -65,3 +66,4 @@ if __name__ == "__main__":
         for post_id in post_updated:
             print(f"- {post_id}")
     
+    algorithm()
