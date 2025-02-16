@@ -18,13 +18,17 @@
 
 Install the require libraries:
 
-1. Install the **spacy** Library:
+1. Install the spaCy library and execute the command to download the model for the data preprocessing process:
 
 ```bash
+# Step 1
 pip install spacy
+
+# Step 2
+python -m spacy download en_core_web_sm
 ```
 
-2. Install the **nltk** Library:
+2. Install the **nltk** Library and download the stop words corpus:
 
 ```bash
 pip install nltk
