@@ -19,6 +19,23 @@ class PostInfo(Base):
         sql.Index("idx_post_info_post_id", "post_id", unique=True),
         {"extend_existing": True}
     )
+    
+    @staticmethod
+    def get_post_comment_count(session, post_ids):
+        counts = {}
+        posts = session.query(PostInfo).filter(PostInfo.post_id.in_(post_ids)).all()
+        for post in posts:
+            counts[post.post_id] = post.comment_count
+        return counts
+    
+    @staticmethod
+    def get_post_id(session):
+        return [post.post_id for post in session.query(PostInfo).all()]
+    
+    @classmethod
+    def update_comment_count(cls, session, post_id, comment_count):
+        session.query(cls).filter(cls.post_id == post_id).update({"comment_count": comment_count})
+        session.commit()
 
 
 #* Define the function to connect to the database
