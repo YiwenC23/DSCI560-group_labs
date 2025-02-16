@@ -23,10 +23,10 @@ np.random.seed(42)
 # Step 1: Train a Doc2Vec model for document embeddings
 def train_doc2vec(tagged_docs):
     # Tokenize messages: "This is a sample document about Python programming!" --> ['this', 'is', 'sample', 'document', 'about', 'python', 'programming']
-#    tokenized_messages = [simple_preprocess(message) for message in messages]
+    # tokenized_messages = [simple_preprocess(message) for message in tagged_docs]
 
     # Prepare tagged documents for doc2vec: ['this', 'is', 'sample', 'document', 'about', 'python', 'programming'] --> TaggedDocument(words=['this', 'is', 'sample', 'document', 'about', 'python', 'programming'], tags=['0'])
-#    tagged_data = [TaggedDocument(words=words, tags=[str(i)]) for i, words in enumerate(tokenized_messages)]
+    # tagged_data = [TaggedDocument(words=words, tags=[str(i)]) for i, words in enumerate(tokenized_messages)]
 
     # Train doc2vec model
     model = Doc2Vec(vector_size=50, min_count=2, epochs=40, seed=42)
@@ -77,12 +77,13 @@ def extract_keywords(tagged_docs, clusters):
         feature_names = vectorizer.get_feature_names_out()
         tfidf_scores = tfidf_matrix.sum(axis=0).A1
         top_keywords = [feature_names[i] for i in tfidf_scores.argsort()[-5:][::-1]]
+        # print([feature_names[i] for i in tfidf_scores.argsort()[::-1]])
         cluster_keywords[cluster] = top_keywords
 
     return cluster_keywords
 
 # Step 5: Visualize the clusters
-def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_samples=3, highlight_cluster = None):
+def visualize_clusters(embeddings, clusters, cluster_keywords, messages, tagged_data, top_n_samples=3, highlight_cluster = None):
     # Reduce dimensionality using PCA
     pca = PCA(n_components=2)
     reduced_embeddings = pca.fit_transform(embeddings)
@@ -123,7 +124,8 @@ def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_s
         print("\nVerifying Cluster Similarity:")
         cluster_messages = {i: [] for i in range(max(clusters) + 1)}
         for i, cluster in enumerate(clusters):
-            cluster_messages[cluster].append(messages[i])
+            post_id = tagged_data[i].tags[0]
+            cluster_messages[cluster].append(messages[post_id])
 
         for cluster, messages_in_cluster in cluster_messages.items():
             print(f"\nCluster {cluster} Sample Messages:")
@@ -131,7 +133,7 @@ def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_s
                 print(f" - {message}")
 
 # Find the closest cluster based on the user input
-def find_closest_cluster(input_message, doc2vec_model, embeddings, clusters, cluster_keywords, messages):
+def find_closest_cluster(input_message, doc2vec_model, embeddings, clusters, cluster_keywords, tagged_data, messages):
     # Preprocess the input message
     cleaned_input = simple_preprocess(input_message)
 
@@ -146,19 +148,19 @@ def find_closest_cluster(input_message, doc2vec_model, embeddings, clusters, clu
         if distance < min_distance:
             min_distance = distance
             closest_cluster = clusters[i]
-
-    count = 0
-    # Display messages from the closest cluster
-    print(f"\nMessages from Cluster {closest_cluster}:")
+                
+    cluster_messages = {i: [] for i in range(max(clusters) + 1)}
     for i, cluster in enumerate(clusters):
         if cluster == closest_cluster:
-            print(f" - {messages[i]}")
-            count += 1
-            if count == 3:  # Stop after printing 3 messages
-                break
+            post_id = tagged_data[i].tags[0]
+            cluster_messages[cluster].append(messages[post_id])
+    for cluster, messages_in_cluster in cluster_messages.items():
+        print(f"\nCluster {cluster} Sample Messages:")
+        for message in messages_in_cluster[:3]:
+            print(f" - {message}")
 
     # Visualize the clusters with the closest cluster highlighted
-    visualize_clusters(embeddings, clusters, cluster_keywords, messages, highlight_cluster=closest_cluster)
+    visualize_clusters(embeddings, clusters, cluster_keywords, messages, tagged_data, highlight_cluster=closest_cluster)
 
 def algorithm():
     # extract data
@@ -167,16 +169,19 @@ def algorithm():
     nlp = spacy.load("en_core_web_sm")
     rm_words_list = ["use", "data", "like", "just"]
     posts = []
+    original_posts = {}
     for file_path in file_paths:
         post_id = file_path.split("/")[-1].split(".")[0]
         with open(file_path, "r", encoding="utf-8") as f:
             text = f.read()
+            original_posts[post_id] = text
             text = re.sub(r"http\S+|www\S+|[^a-zA-Z\s]", "", text)
             tokens = simple_preprocess(text, deacc=True)
             tokens = [word for word in tokens if word not in stop_words]
             tokens = [token.lemma_ for token in nlp(" ".join(tokens))]
             tokens = [word for word in tokens if word not in rm_words_list]
             posts.append(TaggedDocument(tokens, [post_id]))
+            tagged_data = posts
 
     # Train the model
     doc2vec_model = train_doc2vec(posts)
@@ -191,13 +196,13 @@ def algorithm():
     cluster_keywords = extract_keywords(posts, clusters)
 
     # Visualize the cluster
-    visualize_clusters(embeddings, clusters, cluster_keywords, posts, top_n_samples=3)
+    visualize_clusters(embeddings, clusters, cluster_keywords, original_posts, tagged_data, top_n_samples=3)
 
     while True:
         user_input = input("\nEnter a keyword or message to find the closest cluster (or 'exit' to quit): ")
         if user_input.lower() == 'exit':
             break
-        find_closest_cluster(user_input, doc2vec_model, embeddings, clusters, cluster_keywords, posts)
+        find_closest_cluster(user_input, doc2vec_model, embeddings, clusters, cluster_keywords, tagged_data, original_posts)
 
 
 
