@@ -59,6 +59,26 @@ pip install matplotlib
 pip install sqlalchemy
 ```
 
+8. Install the **requests** Library:
+```bash
+pip install requests
+```
+
+9. Install the **bs4** (BeautifulSoup) Library:
+```bash
+pip install bs4
+```
+
+10. Install the **selenium** Library:
+```bash
+pip install selenium
+```
+
+10. Install the **webdriver-manager** Library:
+```bash
+pip install webdriver-manager
+```
+
 ## Execution
 
 ```bash
