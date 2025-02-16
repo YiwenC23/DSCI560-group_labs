@@ -20,7 +20,7 @@ from sqlalchemy import select
 
 np.random.seed(42)
 
-# Step 2: Train a Doc2Vec model for document embeddings
+# Step 1: Train a Doc2Vec model for document embeddings
 def train_doc2vec(tagged_docs):
     # Tokenize messages: "This is a sample document about Python programming!" --> ['this', 'is', 'sample', 'document', 'about', 'python', 'programming']
 #    tokenized_messages = [simple_preprocess(message) for message in messages]
@@ -35,12 +35,12 @@ def train_doc2vec(tagged_docs):
 
     return model
 
-# Step 3: Generate embeddings for each document
+# Step 2: Generate embeddings for each document
 def generate_embeddings(model, tagged_docs):
     embeddings = [model.infer_vector(doc.words) for doc in tagged_docs]
     return embeddings
 
-# Step 4: Cluster the Embeddings (K-means Example)
+# Step 3: Cluster the Embeddings
 def perform_clustering(embeddings, max_clusters):
     best_score = -1  # Silhouette Score ranges from -1 to 1
     optimal_clusters = 2  # At least 2 clusters are needed for Silhouette Score
@@ -62,7 +62,7 @@ def perform_clustering(embeddings, max_clusters):
 
     return best_clusters, best_kmeans, optimal_clusters
 
-# Step 5: Extract Keywords for Each Cluster (TF-IDF Example)
+# Step 4: Extract Keywords for Each Cluster
 def extract_keywords(tagged_docs, clusters):
     cluster_messages = {i: [] for i in range(max(clusters) + 1)}
     for i, cluster in enumerate(clusters):
@@ -81,6 +81,7 @@ def extract_keywords(tagged_docs, clusters):
 
     return cluster_keywords
 
+# Step 5: Visualize the clusters
 def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_samples=3, highlight_cluster = None):
     # Reduce dimensionality using PCA
     pca = PCA(n_components=2)
@@ -107,7 +108,7 @@ def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_s
         # Annotate the centroid with top keywords
         keywords = ", ".join(cluster_keywords[cluster])
 
-        # Place the annotation near the bottom-left corner
+        # Place the annotation
         plt.text(centroid[0], centroid[1], f"Cluster {cluster}\nKeywords: {keywords}", fontsize=10, ha='left', va='bottom', bbox=dict(facecolor='white', alpha=0.8))
 
     # Add legend and labels
@@ -129,7 +130,7 @@ def visualize_clusters(embeddings, clusters, cluster_keywords, messages, top_n_s
             for message in messages_in_cluster[:top_n_samples]:
                 print(f" - {message}")
 
-# Find the closest cluster
+# Find the closest cluster based on the user input
 def find_closest_cluster(input_message, doc2vec_model, embeddings, clusters, cluster_keywords, messages):
     # Preprocess the input message
     cleaned_input = simple_preprocess(input_message)
