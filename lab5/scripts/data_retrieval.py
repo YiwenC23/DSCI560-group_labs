@@ -52,7 +52,7 @@ def post_retrieval(post_cnt):
            
             post_dict = post_preprocessing(soup)
             
-            current_cnt = len(post_dict)
+            current_cnt = len(post_dict) + 1
             if current_cnt > post_cnt:
                 overflow = current_cnt - post_cnt
                 post_dict = dict(list(post_dict.items())[:-overflow])
