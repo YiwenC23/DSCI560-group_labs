@@ -1,12 +1,8 @@
 ﻿import os
 import re
-import sys
 import time
-import openai
-import asyncio
 import requests
 import pprint as pp
-from pyzerox import zerox
 from datetime import datetime
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -18,7 +14,7 @@ from database import SessionLocal, PostInfo
 
 
 #* Define the function to retrieve the data from the reddit
-def post_retrieval(url, post_cnt):
+def post_retrieval(post_cnt):
     global post_dict
     
     options = webdriver.ChromeOptions()
@@ -38,7 +34,7 @@ def post_retrieval(url, post_cnt):
         )
     )
     
-    driver.get(url)
+    driver.get(base_url)
     time.sleep(3)
     
     current_cnt = 0
@@ -56,7 +52,6 @@ def post_retrieval(url, post_cnt):
             post_dict = post_preprocessing(soup)
             
             current_cnt = len(post_dict)
-            print(f"Retrieved {current_cnt} posts")
             
             #? Scroll down to the bottom of the page
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -64,21 +59,21 @@ def post_retrieval(url, post_cnt):
             
             new_height = driver.execute_script("return document.body.scrollHeight")
             if new_height == last_height:
-                print("No more posts to retrieve, stopping the process")
+                print("[INFO] No more posts to retrieve, stopping the process...")
                 break
             
             last_height = new_height
             attempts = 0
         
         except TimeoutException as e:
-            print(f"\nTimeout error: {e}")
-            print(f"Attempt {attempts + 1} of {max_attempts}")
+            print(f"[ERROR] Timeout error: {e}")
+            print(f"[INFO] Attempt {attempts + 1} of {max_attempts}")
             if attempts >= max_attempts:
                 time.sleep(10)
             continue
         
         except WebDriverException as e:
-            print(f"\nBrowser error: {e}")
+            print(f"[ERROR] Browser error: {e}")
             break
     
     driver.quit()
@@ -141,7 +136,6 @@ def comment_retrieval(base_url, id):
     reddit_url = base_url.replace("r/datascience/", "")
     post_id = id.replace("t3_", "")
     comment_url = reddit_url + "comments/" + post_id + ".json"
-    print(f"\nRequesting: {comment_url}")
     
     headers = {"Accept": "*/*"}
     response = None
@@ -150,14 +144,12 @@ def comment_retrieval(base_url, id):
     while True:
         try:
             response = requests.get(comment_url, headers=headers, timeout=60)
-        except requests.RequestException as e:
-            print(f"Request error for {post_id}: {e}")
+        except requests.RequestException:
             time.sleep(sleep_time)
             sleep_time *= 2
             continue
         
         if response.status_code == 200:
-            print(f"Successfully retrieved {post_id} comments!")
             break
         
         elif response.status_code == 429:
@@ -167,20 +159,14 @@ def comment_retrieval(base_url, id):
             else:
                 wait_time = sleep_time
             
-            print(f"Rate limit reached ({response.status_code}) for {post_id}. Sleeping for {wait_time} seconds before retrying...")
             time.sleep(wait_time)
             sleep_time *= 2
         else:
-            print(f"Failed to retrieve {post_id} comments for {response.status_code}, retrying...")
             time.sleep(sleep_time)
             sleep_time *= 2
     
-    try:
-        comments_data = response.json()
-        pp.pformat(comments_data, indent=4)
-    except ValueError as e:
-        print(f"Error decoding JSON: {e}")
-        return None
+    comments_data = response.json()
+    pp.pformat(comments_data, indent=4)
     
     return comments_data
 
@@ -214,32 +200,36 @@ def extract_comment_text(comments):
     return text_list
 
 
-def comment_preprocessing(comments):
-    comment_dict = {}
+def comment_preprocessing():
+    global post_dict
     
-    if comments:
-        for i, comment in enumerate(comments):
-            text = re.sub(r"\s+", " ", comment).strip()
-            comment_dict[i] = text
+    for post_id, data in post_dict.items():
+        if "comments" in data and isinstance(data["comments"], dict):
+            comments = data["comments"]
+            for i, comment in comments.items():
+                text = re.sub(r"http\S+|www\S+|[^a-zA-Z\s]", "", comment).strip()
+                comments[i] = text
+            post_dict[post_id]["comments"] = comments
     
-    return comment_dict
+    return post_dict
 
 
-#* Define the function store the data into parquet file
-def store_data(post_id, comment_dict, output_path):
+#* Define the function store the data into txt file
+def store_data(post_id, output_path):
     global post_dict
     
     session = SessionLocal()
     post_title = post_dict[post_id]["title"]
     post_text = post_dict[post_id]["content"]
+    comment_dict = post_dict[post_id]["comments"]
     
     file_path = os.path.join(output_path, f"{post_id}.txt")
     with open(file_path, "w") as f:
         f.write(f"{post_title}\n\n")
         f.write(f"{post_text}\n\n")
         if comment_dict:
-            for i, comment in comment_dict.items():
-                f.write(f"{i+1}. {comment}\n\n")
+            for comment in comment_dict.values():
+                f.write(f"{comment}\n\n")
     
     try:
         existing_post = session.query(PostInfo).filter_by(post_id=post_id).first()
@@ -264,30 +254,47 @@ def store_data(post_id, comment_dict, output_path):
         session.commit()
     
     except Exception as e:
-        print(f"Failed to store data: {e}")
+        print(f"[ERROR] Failed to store data: {e}")
     finally:
         session.close()
 
 
 #* Define the main function
-def workflow():
-    global post_dict, post_cnt
+def workflow(post_cnt):
+    global post_dict, base_url
     
-    post_retrieval(base_url, post_cnt)
+    print("\n[INFO] Retrieving the posts from Reddit...")
+    post_retrieval(post_cnt)
+    
     for post_id in post_dict.keys():
         comments = comment_retrieval(base_url, post_id)
         time.sleep(1)
         comment_list = extract_comment_text(comments)
         if comment_list is None:
             continue
-        comment_dict = comment_preprocessing(comment_list)
-        store_data(post_id, comment_dict, output_path)
+        
+        post_dict[post_id]["comments"] = dict(enumerate(comment_list))
+    print(f"[INFO] Successfully retrieved {len(post_dict)} posts!")
+    
+    print("\n[INFO] Preprocessing the post data...")
+    comment_preprocessing()
+    print("[INFO] Successfully preprocessed the post data!")
 
 
 if __name__ == "__main__":
     CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
     output_path = os.path.join(CURRENT_DIR, "../data/processed_data/")
     post_dict = {}
-    post_cnt = 1000
     base_url = "https://www.reddit.com/r/datascience/"
-    workflow()
+    
+    while True:
+        post_cnt = input("\n[System] Enter the number of posts to retrieve (skip for all): ")
+        if post_cnt == "":
+            post_cnt = 10000
+        elif post_cnt.isdigit():
+            post_cnt = int(post_cnt)
+        else:
+            print("\n[INFO]Invalid input. Please enter a valid number.")
+    
+        workflow(post_cnt)
+        break
