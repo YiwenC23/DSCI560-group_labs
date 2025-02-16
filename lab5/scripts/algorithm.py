@@ -166,6 +166,7 @@ def algorithm():
     # extract data
     session = SessionLocal()
     file_paths = session.execute(select(PostInfo.file_path)).scalars().all()
+    stop_words = set(stopwords.words("english"))
     nlp = spacy.load("en_core_web_sm")
     rm_words_list = ["use", "data", "like", "just"]
     posts = []
@@ -209,6 +210,6 @@ def algorithm():
 if __name__ == "__main__":
     # CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
     # stop_words_path = os.path.join(CURRENT_DIR, "./test/output/stopwords/")
-    stop_words = set(stopwords.words("english"))
+    # stop_words = set(stopwords.words("english"))
     algorithm()
 
