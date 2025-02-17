@@ -174,11 +174,10 @@ def transaction_signal():
         session = SessionLocal()
         
         signal_list = {}
-        
         for tkr in ticker_list:
             #? Get the historical data for each ticker from the database
             data_train = get_DBdata()
-            
+            print(data_train)
             #? Get the prediction of the transaction signal for each ticker
             trans_signal = algorithm(data_train)
             

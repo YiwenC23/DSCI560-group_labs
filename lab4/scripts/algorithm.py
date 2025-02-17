@@ -12,9 +12,9 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-def get_DBdata():
+def get_DBdata(tkr):
     with SessionLocal() as session:
-        stock_data = session.query(StockData).all()
+        stock_data = session.query(StockData).filter(StockData.ticker == tkr).all()
         df = pd.DataFrame([s.__dict__ for s in stock_data])
         df= df.drop(columns=["_sa_instance_state"], errors="ignore")
         return df
@@ -85,12 +85,7 @@ def decision_signal(metrics, stock_data, ARIMA_model):
 
     past_20_day_avg = stock_data['close'].iloc[-20:].mean()
 
-    if prediction > past_20_day_avg:
-        return 'sell'
-    elif prediction < past_20_day_avg:
-        return 'buy'
-    else:
-        return 'no move'
+    return prediction
 
 def algorithm(stock_data):
     try:
@@ -100,7 +95,8 @@ def algorithm(stock_data):
         stock_data.set_index('date', inplace=True)
         
         #? Filter the data to only include the last 2 years
-        stock_data = stock_data[stock_data.index >= (pd.Timestamp.now() - pd.Timedelta(days=730))]
+        last_date = stock_data.index.max()
+        stock_data = stock_data[stock_data.index >= (last_date - pd.Timedelta(days=730))]
 
         # determine the seasonality/trend feature of the stock price
         # plot_acf(stock_data['close'], lags=52)  # Adjust lags as needed
