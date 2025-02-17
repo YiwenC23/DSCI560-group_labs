@@ -32,7 +32,7 @@ def virtual_real_time_stock():
 
 #* Define the function to retrieve historical stock data
 # print(stock_retrieve(["AAPL", "MSFT"], "2024-02-14"))
-def stock_retrieve(ticker_list, target_date):
+def historical_stock_retrieve(ticker_list, target_date):
     try:
         # Download historical stock data
         raw_data = yf.download(
