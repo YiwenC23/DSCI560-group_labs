@@ -81,15 +81,25 @@ class UserAsset(Base):
         for (ticker, ) in tickers:
             total_value += cls.ticker_total_cost(session, ticker)
         return total_value
-
+    
+    @classmethod
+    def ticker_total_quantity(cls, session, ticker):
+        total_quantity = session.query(
+            sql.func.sum(cls.quantity)
+        ).filter(cls.ticker == ticker).scalar()
+        return total_quantity
 
 #* Define the function to connect to the database
 def connect_db():
     while True:
         #? Get the database credentials from the user
-        db_username = input("[System] Please enter the username for the database: ")
-        db_password = input("[System] Please enter the password for the database: ")
-        db_name = input("[System] Please enter the database name: ")
+        # db_username = input("[System] Please enter the username for the database: ")
+        # db_password = input("[System] Please enter the password for the database: ")
+        # db_name = input("[System] Please enter the database name: ")
+        
+        db_username = "root"
+        db_password = "yiwen960131"
+        db_name = "dsci560"
         
         conn_url = f"mysql+pymysql://{db_username}:{db_password}@localhost/{db_name}"
     

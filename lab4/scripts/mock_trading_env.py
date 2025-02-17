@@ -7,9 +7,11 @@ import concurrent.futures
 from algorithm import get_DBdata, algorithm
 from database import SessionLocal, StockData, TickerIndex, UserAsset, UserAcc
 from yfinance_retrieve import stock_retrieve, removingstock, insert_workflow
+from real_time_data import historical_stock_retrieve
 
 
 def portfolio_ticker_list():
+    global ticker_list
     try:
         session = SessionLocal()
         tickers = session.query(TickerIndex.ticker).distinct().all()
@@ -33,12 +35,15 @@ def fetch_single_ticker(ticker_symbol):
             session_obj = requests.Session()
             setattr(fetch_single_ticker, "session", session_obj)
         
-        yf_ticker = yf.Ticker(ticker_symbol, session=session_obj)
-        info = yf_ticker.info
+        #yf_ticker = yf.Ticker(ticker_symbol, session=session_obj)
+        #info = yf_ticker.info
+        info = historical_stock_retrieve(ticker_symbol)
         
         current_info = {
             "ticker": ticker_symbol,
-            "price": info.get("currentPrice"),
+            "date": info.get("date"),
+            "open_price": info.get("open_price"),
+            "close_price": info.get("close_price"),
             "bid": info.get("bid"),
             "ask": info.get("ask"),
             "volume": info.get("volume"),
@@ -83,33 +88,32 @@ class Transaction:
     
     def buy(self, symbol, quantity):
         try:
-            ticker_info = fetch_single_ticker(symbol)
-            
-            if ticker_info is None or ticker_info["price"] is None:
-                print(f"\n[ERROR] Failed to fetch {symbol} from Yahoo Finance.")
+            if symbol in tickers_info:
+                buy_price = tickers_info[symbol]["price"]
+                date = tickers_info[symbol]["date"]
+            else:
+                print(f"[ERROR] Failed to fetch {symbol} from Yahoo Finance.")
                 return None
-            
-            current_price = ticker_info["price"]
             
             new_transaction = UserAsset(
                 ticker=symbol,
-                datetime=datetime.datetime.now(),
+                datetime=date,
                 quantity=quantity,
-                price=current_price
+                price=buy_price
             )
             
             self.session.add(new_transaction)
             self.session.commit()
-            print(f"\n[INFO] Transaction successful ({new_transaction.datetime}): purchased {quantity} shares of {symbol} at {current_price} per share")
+            print(f"[INFO] Transaction successful ({new_transaction.datetime}): purchased {quantity} shares of {symbol} at {buy_price} per share!")
             
             #? Update the user's balance
-            cost = current_price * quantity
+            cost = buy_price * quantity
             update_user_balance(-cost)
             
             return new_transaction
         
         except Exception as e:
-            print(f"\n[ERROR] Transaction failed: {e}")
+            print(f"[ERROR] Transaction failed: {e}")
             self.session.rollback()
         finally:
             self.session.close()
@@ -130,39 +134,53 @@ class Transaction:
             
             #? If the user does not have enough shares to sell, return None
             if shares_held is None or shares_held < quantity:
-                print(f"\n[ERROR] Insufficient shares of {symbol} to sell.")
+                print(f"[ERROR] Insufficient shares of {symbol} to sell.")
                 return None
             
-            #? Fetch the current price of the ticker
-            ticker_info = fetch_single_ticker(symbol)
+            # #? Fetch the current price of the ticker
+            # ticker_info = fetch_single_ticker(symbol)
             
-            #? If the current price of the ticker is not available, return None
-            if ticker_info is None or ticker_info["price"] is None:
-                print(f"\n[ERROR] Failed to fetch the current price of {symbol}.")
+            # #? If the current price of the ticker is not available, return None
+            # if ticker_info is None or ticker_info["price"] is None:
+            #     print(f"[ERROR] Failed to fetch the current price of {symbol}.")
+            #     return None
+            
+            # current_price = ticker_info["price"]
+            # date = ticker_info["date"]
+            # #? Record the selling transactions as a negative value to distinguish them from the buying transactions
+            # sell_transaction = UserAsset(
+            #     ticker=symbol,
+            #     datetime=date,
+            #     quantity=-quantity,
+            #     price=current_price
+            # )
+            
+            if symbol in tickers_info:
+                sell_price = tickers_info[symbol]["price"]
+                date = tickers_info[symbol]["date"]
+            else:
+                print(f"[ERROR] Failed to fetch {symbol} from Yahoo Finance.")
                 return None
             
-            current_price = ticker_info["price"]
-            
-            #? Record the selling transactions as a negative value to distinguish them from the buying transactions
             sell_transaction = UserAsset(
                 ticker=symbol,
-                datetime=datetime.datetime.now(),
+                datetime=date,
                 quantity=-quantity,
-                price=current_price
+                price=sell_price
             )
             
             self.session.add(sell_transaction)
             self.session.commit()
-            print(f"\n[INFO] Transaction successful ({sell_transaction.datetime}): sold {quantity} shares of {symbol} at {current_price} per share")
+            print(f"[INFO] Transaction successful ({sell_transaction.datetime}): sold {quantity} shares of {symbol} at {sell_price} per share!")
             
             #? Update the user's balance
-            income = current_price * quantity
+            income = sell_price * quantity
             update_user_balance(income)
             
             return sell_transaction
         
         except Exception as e:
-            print(f"\n[ERROR] Transaction failed: {e}")
+            print(f"[ERROR] Transaction failed: {e}")
             self.session.rollback()
         finally:
             self.session.close()
@@ -170,21 +188,22 @@ class Transaction:
 
 #* Define the function to output a transaction signal for each ticker in the portfolio
 def transaction_signal():
+    global ticker_list
     try:
         session = SessionLocal()
         
-        signal_list = {}
+        signal_dict = {}
         
         for tkr in ticker_list:
             #? Get the historical data for each ticker from the database
             data_train = get_DBdata()
-            
+            print(data_train)
             #? Get the prediction of the transaction signal for each ticker
             trans_signal = algorithm(data_train)
             
-            signal_list[tkr] = trans_signal
+            signal_dict[tkr] = trans_signal
         
-        return signal_list
+        return signal_dict
     
     except Exception as e:
         print(f"\n[ERROR] Failed to get the transaction signal: {e}")
@@ -327,15 +346,43 @@ def calculate_portfolio_value():
 
 
 #* Define the function for updating the current daily stock data into the database.
+# def update_daily_data():
+#     try:
+#         session = SessionLocal()
+        
+#         #? Get end date for each ticker in the TickerIndex table
+#         ticker_indices = session.query(TickerIndex).all()
+        
+#         today = datetime.datetime.now().date()
+        
+        
+#         for idx in ticker_indices:
+#             ticker = idx.ticker
+#             last_date = idx.end_date
+            
+#             if last_date < today:
+#                 next_date = last_date + datetime.timedelta(days=1)
+#                 fresh_data = stock_retrieve([ticker], str(next_date), str(today))
+                
+#                 if fresh_data.empty:
+#                     continue
+#                 else:
+#                     insert_workflow([ticker], str(next_date), str(today))
+#                     print(f"\n[INFO] {ticker} data has been successfully updated to {today}.")
+    
+#     except Exception as e:
+#         print(f"\n[ERROR] Failed to update daily data: {e}")
+#     finally:
+#         session.close()
+
+
 def update_daily_data():
     try:
         session = SessionLocal()
         
         #? Get end date for each ticker in the TickerIndex table
         ticker_indices = session.query(TickerIndex).all()
-        
-        today = datetime.datetime.now().date()
-        
+        today = tickers_info[0].index[0]
         
         for idx in ticker_indices:
             ticker = idx.ticker
@@ -353,6 +400,66 @@ def update_daily_data():
     
     except Exception as e:
         print(f"\n[ERROR] Failed to update daily data: {e}")
+    finally:
+        session.close()
+
+
+#* Define the function of buying and selling algorithm after the transaction signal is generated.
+def transaction_workflow():
+    global current_balance, tickers_info
+    
+    session = SessionLocal()
+    txn = Transaction()  # Apply the Transaction class
+    signal_dict = transaction_signal()
+    
+    try:
+        sell_tickers = list(map(lambda r: r[0], filter(lambda r: r[1] == "sell", signal_dict.items())))
+        if sell_tickers:
+            print(f"\n[INFO] Transaction: Selling the following stocks: {sell_tickers}...")
+            for ticker in sell_tickers:
+                share_held = UserAsset.ticker_total_quantity(session, ticker)
+                if share_held and share_held > 0:
+                    tkr_info = {data for data in tickers_info if data["ticker"] == ticker}
+                    current_price = tkr_info.get("price")
+                    
+                    if current_price and current_price > 0:
+                        quantity = int(share_held)
+                        if quantity > 0:
+                            txn.sell(ticker, quantity)
+                            
+        current_balance = session.query(UserAcc).first().balance
+        print(f"[INFO] Current balance: {current_balance}.")
+        
+        buy_tickers = list(map(lambda r: r[0], filter(lambda r: r[1] == "buy", signal_dict.items())))
+        if buy_tickers:
+            print(f"\n[INFO] Transaction: Buying the following stocks: {buy_tickers}...")
+            if len(buy_tickers) == 1:
+                ticker = buy_tickers[0]
+                tkr_info = {data for data in tickers_info if data["ticker"] == ticker}
+                current_price = tkr_info.get("price")
+                
+                if current_price and current_price > 0:
+                    quantity = int(current_balance / current_price)
+                    
+                    if quantity > 0:
+                        txn.buy(ticker, quantity)
+            
+            else:
+                allocation = current_balance / len(buy_tickers)
+                for ticker in buy_tickers:
+                    tkr_info = {data for data in tickers_info if data["ticker"] == ticker}
+                    current_price = tkr_info.get("price")
+                    
+                    if current_price and current_price > 0:
+                        quantity = int(allocation / current_price)
+                        if quantity > 0:
+                            txn.buy(ticker, quantity)
+        current_balance = session.query(UserAcc).first().balance
+        print(f"[INFO] Current balance: {current_balance}.")
+    
+    except Exception as e:
+        print(f"[ERROR] Failed to making transactions: {e}")
+    
     finally:
         session.close()
 
@@ -390,6 +497,8 @@ def display_portfolio_info():
 
 #* Define the function for the portfolio summary.
 def display_portfolio_summary(): 
+    global ticker_list, tickers_info
+    
     #? Calculate the portfolio information
     try:
         portfolio_summary = calculate_portfolio_value()
@@ -413,42 +522,7 @@ def display_portfolio_summary():
     else:
         print("\n[INFO] No portfolio data available.")
     
-    txn = Transaction()  # Apply the Transaction class
-    default_quantity = 10
-    signal_list = transaction_signal()
-    
-    for tkr, signal in signal_list.items():
-        if signal == "buy":
-            print(f"\n[BOT] The current {tkr} price is below the predication price, buying stock...")
-            qty_input = input("Enter quantity to buy (skip for default quantity, 10): ").strip()
-            try:
-                if qty_input:
-                    quantity = int(qty_input)
-                else:
-                    quantity = default_quantity
-                txn.buy(tkr, quantity)
-                print(f"\n[INFO] {tkr} has been purchased for {quantity} shares.")
-            except ValueError as e:
-                print(f"Invalid quantity: {e}")
-                return
-        
-        elif signal == "sell":
-            print(f"\n[BOT] The current {tkr} price is above the predication price, selling stock...")
-            qty_input = input("Enter quantity to sell (skip for default quantity, 10): ").strip()
-            try:
-                if qty_input:
-                    quantity = int(qty_input)
-                else:
-                    quantity = default_quantity
-                txn.sell(tkr, quantity)
-                print(f"\n[INFO] {tkr} has been sold for {quantity} shares.")
-            except ValueError as e:
-                print(f"Invalid quantity: {e}")
-                return
-        
-        else:
-            return
-        
+
     main_menu = input("Option: Enter '1' to return to the main menu: ")
     if main_menu == "1":
         return
@@ -456,14 +530,39 @@ def display_portfolio_summary():
         print("\n[INFO] Invalid option, returning to main menu.")
 
 
+def transaction_interface():
+    global ticker_list, tickers_info, current_balance
+    session = SessionLocal()
+    
+    current_date = tickers_info[0].index[0]
+    stock_date = session.query(StockData).order_by(StockData.date).first().date
+    
+    while True:
+        print("\n[INFO] Transaction Interface")
+        print(f"Current Date: {current_date} | Stock Date: {stock_date}")
+        
+        if current_date > stock_date:
+            transaction_workflow()
+            print(f"\n[INFO] {current_date}: Transaction completed.")
+            main_menu = input("Option: Enter '1' to return to the main menu: ")
+            if main_menu == "1":
+                update_daily_data()
+                return
+            else:
+                print("\n[INFO] Invalid option, returning to main menu.")
+
+
 def main():
+    global ticker_list, tickers_info, current_balance
+    
     while True:
         print("\nYour Options Are:")
         print("1. Add stock to portfolio")
         print("2. Remove stock from portfolio")
         print("3. Enter the portfolio information interface")
         print("4. Enter the portfolio summary interface")
-        print("5. Exit")
+        print("5. Enter the transaction interface")
+        print("6. Exit")
         
         userschoice = input("Select one of the above: ").strip()
         
@@ -474,6 +573,8 @@ def main():
             insert_workflow([symbol], start_date, end_date)
             print(f"\n[INFO] Stock {symbol} has been added to your portfolio.")
         
+            current_balance = init_user_account()
+        
         elif userschoice == "2":
             symbol = input("Enter the stock symbol to remove: ").upper()
             removingstock(symbol)
@@ -483,8 +584,13 @@ def main():
         
         elif userschoice == "4":
             display_portfolio_summary()
-            
+        
         elif userschoice == "5":
+            transaction_interface()
+            current_balance = init_user_account()
+            
+        
+        elif userschoice == "6":
             print("\n[INFO] Goodbye!")
             break
         else:
@@ -493,7 +599,8 @@ def main():
 if __name__ == "__main__":
     current_balance = init_user_account()
     ticker_list = portfolio_ticker_list()
-    tickers_info = parallel_fetch_tickers()
+    print(ticker_list)
+    tickers_info = historical_stock_retrieve(ticker_list)
     
-    update_daily_data()
+    # update_daily_data()
     main()
