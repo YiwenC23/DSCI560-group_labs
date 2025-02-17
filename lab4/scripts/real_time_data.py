@@ -2,6 +2,7 @@ import time
 import random
 import pandas as pd
 import os
+import yfinance
 
 # Function to update Apple's stock data
 def update_stock(stock_data):
@@ -28,6 +29,48 @@ def virtual_real_time_stock():
         print(df.to_string(index=False))  # Print stock data in table format
     
         time.sleep(1)  # Wait for the next update
+
+#* Define the function to retrieve historical stock data
+# print(stock_retrieve(["AAPL", "MSFT"], "2024-02-14"))
+def stock_retrieve(ticker_list, target_date):
+    try:
+        # Download historical stock data
+        raw_data = yf.download(
+            ticker_list,
+            start=target_date,
+            end=target_date,
+            interval="1d",
+            progress=False
+        )
+        
+        # Ensure data is available
+        if raw_data.empty:
+            print(f"No data found for the specified date: {target_date}")
+            return []
+        
+        # Process and format data
+        stock_data = (
+            raw_data.stack(level=0, future_stack=True)
+            .rename_axis(["Date", "Ticker"])
+            .reset_index(level=1)
+            .reset_index(drop=False)
+            .rename(columns={
+                "date": "date",
+                "ticker": "ticker",
+                "open_price": "open",
+                "close_price": "close"
+            })
+            .rename_axis(columns=None)
+        )
+        
+        # Convert dataframe to list of dictionaries
+        result = stock_data[["date", "ticker", "open", "close"]].to_dict(orient="records")
+        
+        return result
+    
+    except Exception as e:
+        print(f"\n[ERROR] Failed to retrieve stock data: {e}")
+        return []
 
 if __name__ == "__main__":
     virtual_real_time_stock()
