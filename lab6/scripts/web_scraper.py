@@ -18,18 +18,15 @@ def separate_and_lowercase(text):
     return separated_text.lower()
 
 # Convert the abbreviations to the full words/phrases
-def tokenize_phrase(column_names):
-    column_name_split = []
-    for column_name in column_names:
-        column_name = ''.join([c if c not in string.punctuation else ' ' for c in column_name])
-        column_name = separate_and_lowercase(column_name)
-        tokenize_column = column_name.split()
-        for i in range(len(tokenize_column)):
-            results = ABBR_TREE.xpath(f'//div[li[text()="{tokenize_column[i]}"]]/text()')
-            if results:
-                tokenize_column[i] = results[0].split()[0]
-        column_name_split.append(tokenize_column)
-    return ", ".join([" ".join(tokens) for tokens in column_name_split])
+def tokenize_phrase(text):
+    text = ''.join([c if c not in string.punctuation else ' ' for c in text])
+    text = separate_and_lowercase(text)
+    tokenize_text = text.split()
+    for i in range(len(tokenize_text)):
+        results = ABBR_TREE.xpath(f'//div[li[text()="{tokenize_text[i]}"]]/text()')
+        if results:
+            tokenize_text[i] = results[0].split()[0]
+    return " ".join(tokenize_text)
 
 # Convert text to lowercase and replace spaces with hyphens. 
 def format_url_segment(segment):
