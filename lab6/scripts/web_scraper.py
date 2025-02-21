@@ -1,6 +1,7 @@
 ﻿import requests
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import update
 import time
 import re
@@ -57,8 +58,8 @@ def scrape_well_data(state, county, well_name, api_number):
         print(f"[ERROR] Data extraction failed for {well_url} (API# {api_number}, Well: {well_name})")
         return None
 
+# Iterate through all wells in the database and update missing details.
 def update_database():
-    """ Iterate through all wells in the database and update missing details. """
     session = SessionLocal()
     
     wells = session.query(WellInfo).all()
@@ -89,5 +90,39 @@ def update_database():
     
     session.close()
 
-# Run the update function
-update_database()
+def update_database():
+    session = SessionLocal()
+    
+    try:
+        wells = session.query(WellInfo).all()
+        
+        for well in wells:
+            print(f"[INFO] Processing API# {well.API} ({well.well_name})...")
+
+            well_data = scrape_well_data(well.state, well.county, well.well_name, well.API)
+            
+            if well_data:
+                try:
+                    well.well_status = well_data.get("well_status")
+                    well.well_type = well_data.get("well_type")
+                    well.closest_city = well_data.get("closest_city")
+                    well.barrels_produced = well_data.get("barrels_produced")
+                    well.mcf_gas_produced = well_data.get("mcf_gas_produced")
+                    
+                    session.commit()
+                    print(f"[SUCCESS] Updated API# {well.API} ({well.well_name}) in the database.")
+                except SQLAlchemyError as e:
+                    session.rollback()
+                    print(f"[ERROR] Failed to update API# {well.API}: {e}")
+
+            time.sleep(2)  # Prevents getting blocked by the server
+
+    except SQLAlchemyError as e:
+        print(f"[ERROR] Database query failed: {e}")
+    
+    finally:
+        session.close()
+
+
+if __name__ == "__main__":
+    update_database()
