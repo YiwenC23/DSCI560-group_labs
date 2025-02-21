@@ -9,16 +9,13 @@ import string
 from database import WellInfo, SessionLocal
 from lxml import etree
 
-# Load abbreviations XML
-ABBR_TREE = etree.parse("Abbreviations.xml")
-
 def separate_and_lowercase(text):
     text = re.sub(r'_', ' ', text)  # Replace underscores with spaces
     separated_text = re.sub(r'(?<!^)(?=[A-Z])', ' ', text)  # Split CamelCase words by inserting spaces before uppercase letters
     return separated_text.lower()
 
 # Convert the abbreviations to the full words/phrases
-def tokenize_phrase(text):
+def tokenize_phrase(text, ABBR_TREE):
     text = ''.join([c if c not in string.punctuation else ' ' for c in text])
     text = separate_and_lowercase(text)
     tokenize_text = text.split()
@@ -43,8 +40,10 @@ def construct_well_url(state, county, well_name, api_number):
 
 # Scrape well details from the dynamically generated URL.
 def scrape_well_data(state, county, well_name, api_number):
-    state = tokenize_phrase(state)
-    county = tokenize_phrase(county)
+    ABBR_TREE = etree.parse("Abbreviations.xml")
+
+    state = tokenize_phrase(state, ABBR_TREE)
+    county = tokenize_phrase(county, ABBR_TREE)
 
     well_url = construct_well_url(state, county, well_name, api_number)
     headers = {
