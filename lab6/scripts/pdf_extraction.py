@@ -3,6 +3,7 @@ import re
 import time
 import cv2 as cv
 import numpy as np
+import pytesseract as pt
 from tqdm import tqdm
 from pdf2image import convert_from_path
 
@@ -35,6 +36,44 @@ def pdf_to_images(input_files, output_base, dpi=300, thread_count=24):
             time.sleep(0.01)
     
     print(f"Converted all {len(input_files)} to images and saved in output folder.")
+
+
+#* Function to preprocess the image
+def img_preprocess(image_path):
+    image = cv.imread(image_path)
+    gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    
+    binary = cv.adaptiveThreshold(
+        gray, 255,
+        cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv.THRESH_BINARY, 11, 2
+    )
+    
+    denoised = cv.medianBlur(binary, 3)
+    
+    kernel = np.ones((3, 3), np.uint8)
+    processed = cv.morphologyEx(denoised, cv.MORPH_CLOSE, kernel)
+    
+    def deskew(processed_img):
+        coords = np.column_stack(np.where(processed_img == 0))
+        angle = cv.minAreaRect(coords)[-1]
+        
+        if angle < -45:
+            angle = -(90 + angle)
+        else:
+            angle = -angle
+        
+        (h, w) = processed_img.shape[:2]
+        center = (w // 2, h // 2)
+        
+        M = cv.getRotationMatrix2D(center, angle, 1.0)
+        rotation = cv.warpAffine(processed_img, M, (w, h), flags=cv.INTER_CUBIC, borderMode=cv.BORDER_REPLICATE)
+        
+        return rotation
+    
+    preprocessed_image = deskew(processed)
+    
+    return preprocessed_image
 
 
 #* Function to detect table in the image
@@ -94,7 +133,7 @@ def detect_table(image_path):
         x, y, w, h = cv.boundingRect(contour)
         area = w * h
         
-        # Filter based on area and aspect ratio
+        #? Filter based on area and aspect ratio
         if min_area < area < max_area:
             peri = cv.arcLength(contour, True)
             approx = cv.approxPolyDP(contour, 0.02 * peri, True)
@@ -110,6 +149,37 @@ def detect_table(image_path):
         return src, src_noTable, boxes
     else:
         return src, None, None
+
+
+#* Function to extract text from the image
+def extract_text(image_path):
+    custom_config = r"--oem 3 --psm 6"
+    
+    image, src_noTable, boxes = detect_table(image_path)
+    
+    def extract_text_from_box(box, image):
+        x1, y1, x2, y2 = box
+        roi = image[y1:y2, x1:x2]
+        box_text = pt.image_to_string(roi, config=custom_config)
+        return box_text
+    
+    if boxes:
+        box_texts = []
+        for _, box in enumerate(boxes):
+            box_text = extract_text_from_box(box, image)
+            box_texts.append(box_text)
+        
+        text_box = "\n".join(box_texts) + "\n"
+        text_noTable = pt.image_to_string(src_noTable, config=custom_config)
+        text_overall = text_box + "\n" + text_noTable
+        
+        return text_overall
+    
+    else:
+        prepro_img = img_preprocess(image_path)
+        text = pt.image_to_string(prepro_img, config=custom_config)
+        
+        return text
 
 
 if __name__ == "__main__":
