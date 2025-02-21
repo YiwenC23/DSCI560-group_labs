@@ -5,10 +5,31 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import update
 import time
 import re
+import string
 from database import WellInfo, SessionLocal
+from lxml import etree
 
-# convert the abbreviations to the full words/phrases??????
-# update database.py??????
+# Load abbreviations XML
+ABBR_TREE = etree.parse("Abbreviations.xml")
+
+def separate_and_lowercase(text):
+    text = re.sub(r'_', ' ', text)  # Replace underscores with spaces
+    separated_text = re.sub(r'(?<!^)(?=[A-Z])', ' ', text)  # Split CamelCase words by inserting spaces before uppercase letters
+    return separated_text.lower()
+
+# Convert the abbreviations to the full words/phrases
+def tokenize_phrase(column_names):
+    column_name_split = []
+    for column_name in column_names:
+        column_name = ''.join([c if c not in string.punctuation else ' ' for c in column_name])
+        column_name = separate_and_lowercase(column_name)
+        tokenize_column = column_name.split()
+        for i in range(len(tokenize_column)):
+            results = ABBR_TREE.xpath(f'//div[li[text()="{tokenize_column[i]}"]]/text()')
+            if results:
+                tokenize_column[i] = results[0].split()[0]
+        column_name_split.append(tokenize_column)
+    return ", ".join([" ".join(tokens) for tokens in column_name_split])
 
 # Convert text to lowercase and replace spaces with hyphens. 
 def format_url_segment(segment):
@@ -25,6 +46,9 @@ def construct_well_url(state, county, well_name, api_number):
 
 # Scrape well details from the dynamically generated URL.
 def scrape_well_data(state, county, well_name, api_number):
+    state = tokenize_phrase(state)
+    county = tokenize_phrase(county)
+
     well_url = construct_well_url(state, county, well_name, api_number)
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -108,7 +132,7 @@ def update_database():
                     well.closest_city = well_data.get("closest_city")
                     well.barrels_produced = well_data.get("barrels_produced")
                     well.mcf_gas_produced = well_data.get("mcf_gas_produced")
-                    
+
                     session.commit()
                     print(f"[SUCCESS] Updated API# {well.API} ({well.well_name}) in the database.")
                 except SQLAlchemyError as e:
