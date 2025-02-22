@@ -1,4 +1,4 @@
-﻿import requests
+import requests
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -6,7 +6,7 @@ from sqlalchemy import update
 import time
 import re
 import string
-from database import WellInfo, SessionLocal
+from test_database import WellNotes, SessionLocal ### subject to change
 from lxml import etree
 
 def separate_and_lowercase(text):
@@ -40,10 +40,10 @@ def construct_well_url(state, county, well_name, api_number):
 
 # Scrape well details from the dynamically generated URL.
 def scrape_well_data(state, county, well_name, api_number):
-    ABBR_TREE = etree.parse("Abbreviations.xml")
+    # ABBR_TREE = etree.parse("Abbreviations.xml")
 
-    state = tokenize_phrase(state, ABBR_TREE)
-    county = tokenize_phrase(county, ABBR_TREE)
+    # state = tokenize_phrase(state, ABBR_TREE)
+    # county = tokenize_phrase(county, ABBR_TREE)
 
     well_url = construct_well_url(state, county, well_name, api_number)
     headers = {
@@ -62,8 +62,10 @@ def scrape_well_data(state, county, well_name, api_number):
         well_status = soup.select_one("th:contains('Well Status') + td").text.strip()
         well_type = soup.select_one("th:contains('Well Type') + td").text.strip()
         closest_city = soup.select_one("th:contains('Closest City') + td").text.strip()
-        barrels_produced = soup.select_one("p.block_stat span.dropcap").text.strip()
-        mcf_gas_produced = soup.select("p.block_stat span.dropcap")[1].text.strip()
+        barrels_produced_element = soup.select_one("p.block_stat span.dropcap")
+        barrels_produced = barrels_produced_element.text.strip() if barrels_produced_element else 1.00
+        mcf_gas_produced_element = soup.select("p.block_stat span.dropcap")
+        mcf_gas_produced = mcf_gas_produced_element[1].text.strip() if len(mcf_gas_produced_element)>1 else 1.00
 
         
         return {
@@ -91,8 +93,8 @@ def update_database():
         
         if well_data:
             stmt = (
-                update(WellInfo)
-                .where(WellInfo.API == well.API)
+                update(WellNotes)
+                .where(WellNotes.API == well.API)
                 .values(
                     well_status=well_data["well_status"],
                     well_type=well_data["well_type"],
@@ -101,7 +103,7 @@ def update_database():
                     mcf_gas_produced=well_data["mcf_gas_produced"]
                 )
             )
-            
+
             session.execute(stmt)
             session.commit()
             print(f"[SUCCESS] Updated API# {well.API} ({well.well_name}) in the database.")
@@ -114,7 +116,7 @@ def update_database():
     session = SessionLocal()
     
     try:
-        wells = session.query(WellInfo).all()
+        wells = session.query(WellNotes).all()
         
         for well in wells:
             print(f"[INFO] Processing API# {well.API} ({well.well_name})...")
