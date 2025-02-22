@@ -1,0 +1,438 @@
+2025-02-21 18:06:17,697 - INFO - Loaded CSV with 73 rows
+2025-02-21 18:06:21,214 - INFO - Processing API number: 33-053-06051
+2025-02-21 18:06:40,979 - ERROR - Error extracting details for API 33-053-06051: Message: 
+Stacktrace:
+#0 0x5b7a49273f2a <unknown>
+#1 0x5b7a48d540c0 <unknown>
+#2 0x5b7a48da43ca <unknown>
+#3 0x5b7a48da4551 <unknown>
+#4 0x5b7a48df2d34 <unknown>
+#5 0x5b7a48dca08d <unknown>
+#6 0x5b7a48df00a7 <unknown>
+#7 0x5b7a48dc9e33 <unknown>
+#8 0x5b7a48d95cc0 <unknown>
+#9 0x5b7a48d97471 <unknown>
+#10 0x5b7a4923f1df <unknown>
+#11 0x5b7a492432dd <unknown>
+#12 0x5b7a4922be87 <unknown>
+#13 0x5b7a49243a4e <unknown>
+#14 0x5b7a492120fe <unknown>
+#15 0x5b7a49262908 <unknown>
+#16 0x5b7a49262b13 <unknown>
+#17 0x5b7a49272b9c <unknown>
+#18 0x7a0ab9986ac3 <unknown>
+
+2025-02-21 18:06:40,990 - INFO - Progress saved after processing 0 rows
+2025-02-21 18:06:41,991 - INFO - Processing API number: 33-053-03472
+2025-02-21 18:06:59,640 - ERROR - Error extracting details for API 33-053-03472: Message: 
+Stacktrace:
+#0 0x5b7a49273f2a <unknown>
+#1 0x5b7a48d540c0 <unknown>
+#2 0x5b7a48da43ca <unknown>
+#3 0x5b7a48da4551 <unknown>
+#4 0x5b7a48df2d34 <unknown>
+#5 0x5b7a48dca08d <unknown>
+#6 0x5b7a48df00a7 <unknown>
+#7 0x5b7a48dc9e33 <unknown>
+#8 0x5b7a48d95cc0 <unknown>
+#9 0x5b7a48d97471 <unknown>
+#10 0x5b7a4923f1df <unknown>
+#11 0x5b7a492432dd <unknown>
+#12 0x5b7a4922be87 <unknown>
+#13 0x5b7a49243a4e <unknown>
+#14 0x5b7a492120fe <unknown>
+#15 0x5b7a49262908 <unknown>
+#16 0x5b7a49262b13 <unknown>
+#17 0x5b7a49272b9c <unknown>
+#18 0x7a0ab9986ac3 <unknown>
+
+2025-02-21 18:07:00,645 - INFO - Processing API number: 33-053-02102
+2025-02-21 18:07:18,021 - ERROR - Error extracting details for API 33-053-02102: Message: 
+Stacktrace:
+#0 0x5b7a49273f2a <unknown>
+#1 0x5b7a48d540c0 <unknown>
+#2 0x5b7a48da43ca <unknown>
+#3 0x5b7a48da4551 <unknown>
+#4 0x5b7a48df2d34 <unknown>
+#5 0x5b7a48dca08d <unknown>
+#6 0x5b7a48df00a7 <unknown>
+#7 0x5b7a48dc9e33 <unknown>
+#8 0x5b7a48d95cc0 <unknown>
+#9 0x5b7a48d97471 <unknown>
+#10 0x5b7a4923f1df <unknown>
+#11 0x5b7a492432dd <unknown>
+#12 0x5b7a4922be87 <unknown>
+#13 0x5b7a49243a4e <unknown>
+#14 0x5b7a492120fe <unknown>
+#15 0x5b7a49262908 <unknown>
+#16 0x5b7a49262b13 <unknown>
+#17 0x5b7a49272b9c <unknown>
+#18 0x7a0ab9986ac3 <unknown>
+
+2025-02-21 18:07:19,025 - INFO - Processing API number: 33-053-04852
+2025-02-21 18:07:26,397 - WARNING - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectionResetError(104, 'Connection reset by peer')': /session/86bbbc9a8a3c01dffff2facf5edaaf26
+2025-02-21 18:07:26,398 - WARNING - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x78b3a6fb88c0>: Failed to establish a new connection: [Errno 111] Connection refused')': /session/86bbbc9a8a3c01dffff2facf5edaaf26
+2025-02-21 18:07:26,400 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x78b3a6fb87a0>: Failed to establish a new connection: [Errno 111] Connection refused')': /session/86bbbc9a8a3c01dffff2facf5edaaf26
+2025-02-21 18:07:33,211 - INFO - Loaded CSV with 73 rows
+2025-02-21 18:07:36,722 - INFO - Processing API number: 33-053-06051
+2025-02-21 18:07:55,811 - ERROR - Error extracting details for API 33-053-06051: Message: 
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9bc73ca <unknown>
+#3 0x5b29e9bc7551 <unknown>
+#4 0x5b29e9c15d34 <unknown>
+#5 0x5b29e9bed08d <unknown>
+#6 0x5b29e9c130a7 <unknown>
+#7 0x5b29e9bece33 <unknown>
+#8 0x5b29e9bb8cc0 <unknown>
+#9 0x5b29e9bba471 <unknown>
+#10 0x5b29ea0621df <unknown>
+#11 0x5b29ea0662dd <unknown>
+#12 0x5b29ea04ee87 <unknown>
+#13 0x5b29ea066a4e <unknown>
+#14 0x5b29ea0350fe <unknown>
+#15 0x5b29ea085908 <unknown>
+#16 0x5b29ea085b13 <unknown>
+#17 0x5b29ea095b9c <unknown>
+#18 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:07:55,817 - INFO - Progress saved after processing 0 rows
+2025-02-21 18:07:56,819 - INFO - Processing API number: 33-053-03472
+2025-02-21 18:08:14,904 - ERROR - Error extracting details for API 33-053-03472: Message: 
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9bc73ca <unknown>
+#3 0x5b29e9bc7551 <unknown>
+#4 0x5b29e9c15d34 <unknown>
+#5 0x5b29e9bed08d <unknown>
+#6 0x5b29e9c130a7 <unknown>
+#7 0x5b29e9bece33 <unknown>
+#8 0x5b29e9bb8cc0 <unknown>
+#9 0x5b29e9bba471 <unknown>
+#10 0x5b29ea0621df <unknown>
+#11 0x5b29ea0662dd <unknown>
+#12 0x5b29ea04ee87 <unknown>
+#13 0x5b29ea066a4e <unknown>
+#14 0x5b29ea0350fe <unknown>
+#15 0x5b29ea085908 <unknown>
+#16 0x5b29ea085b13 <unknown>
+#17 0x5b29ea095b9c <unknown>
+#18 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:08:15,906 - INFO - Processing API number: 33-053-02102
+2025-02-21 18:08:33,902 - ERROR - Error extracting details for API 33-053-02102: Message: 
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9bc73ca <unknown>
+#3 0x5b29e9bc7551 <unknown>
+#4 0x5b29e9c15d34 <unknown>
+#5 0x5b29e9bed08d <unknown>
+#6 0x5b29e9c130a7 <unknown>
+#7 0x5b29e9bece33 <unknown>
+#8 0x5b29e9bb8cc0 <unknown>
+#9 0x5b29e9bba471 <unknown>
+#10 0x5b29ea0621df <unknown>
+#11 0x5b29ea0662dd <unknown>
+#12 0x5b29ea04ee87 <unknown>
+#13 0x5b29ea066a4e <unknown>
+#14 0x5b29ea0350fe <unknown>
+#15 0x5b29ea085908 <unknown>
+#16 0x5b29ea085b13 <unknown>
+#17 0x5b29ea095b9c <unknown>
+#18 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:08:34,904 - INFO - Processing API number: 33-053-04852
+2025-02-21 18:08:52,338 - ERROR - Error extracting details for API 33-053-04852: Message: 
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9bc73ca <unknown>
+#3 0x5b29e9bc7551 <unknown>
+#4 0x5b29e9c15d34 <unknown>
+#5 0x5b29e9bed08d <unknown>
+#6 0x5b29e9c130a7 <unknown>
+#7 0x5b29e9bece33 <unknown>
+#8 0x5b29e9bb8cc0 <unknown>
+#9 0x5b29e9bba471 <unknown>
+#10 0x5b29ea0621df <unknown>
+#11 0x5b29ea0662dd <unknown>
+#12 0x5b29ea04ee87 <unknown>
+#13 0x5b29ea066a4e <unknown>
+#14 0x5b29ea0350fe <unknown>
+#15 0x5b29ea085908 <unknown>
+#16 0x5b29ea085b13 <unknown>
+#17 0x5b29ea095b9c <unknown>
+#18 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:08:53,341 - INFO - Processing API number: 33-105-02721
+2025-02-21 18:09:11,275 - ERROR - Error extracting details for API 33-105-02721: Message: 
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9bc73ca <unknown>
+#3 0x5b29e9bc7551 <unknown>
+#4 0x5b29e9c15d34 <unknown>
+#5 0x5b29e9bed08d <unknown>
+#6 0x5b29e9c130a7 <unknown>
+#7 0x5b29e9bece33 <unknown>
+#8 0x5b29e9bb8cc0 <unknown>
+#9 0x5b29e9bba471 <unknown>
+#10 0x5b29ea0621df <unknown>
+#11 0x5b29ea0662dd <unknown>
+#12 0x5b29ea04ee87 <unknown>
+#13 0x5b29ea066a4e <unknown>
+#14 0x5b29ea0350fe <unknown>
+#15 0x5b29ea085908 <unknown>
+#16 0x5b29ea085b13 <unknown>
+#17 0x5b29ea095b9c <unknown>
+#18 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:09:12,279 - INFO - Processing API number: 33-105-02732
+2025-02-21 18:09:30,318 - ERROR - Error extracting details for API 33-105-02732: Message: 
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9bc73ca <unknown>
+#3 0x5b29e9bc7551 <unknown>
+#4 0x5b29e9c15d34 <unknown>
+#5 0x5b29e9bed08d <unknown>
+#6 0x5b29e9c130a7 <unknown>
+#7 0x5b29e9bece33 <unknown>
+#8 0x5b29e9bb8cc0 <unknown>
+#9 0x5b29e9bba471 <unknown>
+#10 0x5b29ea0621df <unknown>
+#11 0x5b29ea0662dd <unknown>
+#12 0x5b29ea04ee87 <unknown>
+#13 0x5b29ea066a4e <unknown>
+#14 0x5b29ea0350fe <unknown>
+#15 0x5b29ea085908 <unknown>
+#16 0x5b29ea085b13 <unknown>
+#17 0x5b29ea095b9c <unknown>
+#18 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:09:31,340 - INFO - Processing API number: 33-105-02725
+2025-02-21 18:09:48,824 - ERROR - Error extracting details for API 33-105-02725: Message: 
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9bc73ca <unknown>
+#3 0x5b29e9bc7551 <unknown>
+#4 0x5b29e9c15d34 <unknown>
+#5 0x5b29e9bed08d <unknown>
+#6 0x5b29e9c130a7 <unknown>
+#7 0x5b29e9bece33 <unknown>
+#8 0x5b29e9bb8cc0 <unknown>
+#9 0x5b29e9bba471 <unknown>
+#10 0x5b29ea0621df <unknown>
+#11 0x5b29ea0662dd <unknown>
+#12 0x5b29ea04ee87 <unknown>
+#13 0x5b29ea066a4e <unknown>
+#14 0x5b29ea0350fe <unknown>
+#15 0x5b29ea085908 <unknown>
+#16 0x5b29ea085b13 <unknown>
+#17 0x5b29ea095b9c <unknown>
+#18 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:09:49,826 - INFO - Processing API number: 33-105-02722
+2025-02-21 18:10:07,282 - ERROR - Error extracting details for API 33-105-02722: Message: 
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9bc73ca <unknown>
+#3 0x5b29e9bc7551 <unknown>
+#4 0x5b29e9c15d34 <unknown>
+#5 0x5b29e9bed08d <unknown>
+#6 0x5b29e9c130a7 <unknown>
+#7 0x5b29e9bece33 <unknown>
+#8 0x5b29e9bb8cc0 <unknown>
+#9 0x5b29e9bba471 <unknown>
+#10 0x5b29ea0621df <unknown>
+#11 0x5b29ea0662dd <unknown>
+#12 0x5b29ea04ee87 <unknown>
+#13 0x5b29ea066a4e <unknown>
+#14 0x5b29ea0350fe <unknown>
+#15 0x5b29ea085908 <unknown>
+#16 0x5b29ea085b13 <unknown>
+#17 0x5b29ea095b9c <unknown>
+#18 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:10:08,293 - INFO - Processing API number: 33-053-06024
+2025-02-21 18:10:26,327 - ERROR - Error extracting details for API 33-053-06024: Message: 
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9bc73ca <unknown>
+#3 0x5b29e9bc7551 <unknown>
+#4 0x5b29e9c15d34 <unknown>
+#5 0x5b29e9bed08d <unknown>
+#6 0x5b29e9c130a7 <unknown>
+#7 0x5b29e9bece33 <unknown>
+#8 0x5b29e9bb8cc0 <unknown>
+#9 0x5b29e9bba471 <unknown>
+#10 0x5b29ea0621df <unknown>
+#11 0x5b29ea0662dd <unknown>
+#12 0x5b29ea04ee87 <unknown>
+#13 0x5b29ea066a4e <unknown>
+#14 0x5b29ea0350fe <unknown>
+#15 0x5b29ea085908 <unknown>
+#16 0x5b29ea085b13 <unknown>
+#17 0x5b29ea095b9c <unknown>
+#18 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:10:27,331 - INFO - Processing API number: 33-105-02726
+2025-02-21 18:10:45,038 - ERROR - Error extracting details for API 33-105-02726: Message: 
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9bc73ca <unknown>
+#3 0x5b29e9bc7551 <unknown>
+#4 0x5b29e9c15d34 <unknown>
+#5 0x5b29e9bed08d <unknown>
+#6 0x5b29e9c130a7 <unknown>
+#7 0x5b29e9bece33 <unknown>
+#8 0x5b29e9bb8cc0 <unknown>
+#9 0x5b29e9bba471 <unknown>
+#10 0x5b29ea0621df <unknown>
+#11 0x5b29ea0662dd <unknown>
+#12 0x5b29ea04ee87 <unknown>
+#13 0x5b29ea066a4e <unknown>
+#14 0x5b29ea0350fe <unknown>
+#15 0x5b29ea085908 <unknown>
+#16 0x5b29ea085b13 <unknown>
+#17 0x5b29ea095b9c <unknown>
+#18 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:10:46,042 - INFO - Processing API number: 33-105-02731
+2025-02-21 18:11:03,838 - ERROR - Error extracting details for API 33-105-02731: Message: 
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9bc73ca <unknown>
+#3 0x5b29e9bc7551 <unknown>
+#4 0x5b29e9c15d34 <unknown>
+#5 0x5b29e9bed08d <unknown>
+#6 0x5b29e9c130a7 <unknown>
+#7 0x5b29e9bece33 <unknown>
+#8 0x5b29e9bb8cc0 <unknown>
+#9 0x5b29e9bba471 <unknown>
+#10 0x5b29ea0621df <unknown>
+#11 0x5b29ea0662dd <unknown>
+#12 0x5b29ea04ee87 <unknown>
+#13 0x5b29ea066a4e <unknown>
+#14 0x5b29ea0350fe <unknown>
+#15 0x5b29ea085908 <unknown>
+#16 0x5b29ea085b13 <unknown>
+#17 0x5b29ea095b9c <unknown>
+#18 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:11:03,841 - INFO - Progress saved after processing 10 rows
+2025-02-21 18:11:04,842 - INFO - Processing API number: 33-053-06011
+2025-02-21 18:11:22,657 - ERROR - Error extracting details for API 33-053-06011: Message: 
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9bc73ca <unknown>
+#3 0x5b29e9bc7551 <unknown>
+#4 0x5b29e9c15d34 <unknown>
+#5 0x5b29e9bed08d <unknown>
+#6 0x5b29e9c130a7 <unknown>
+#7 0x5b29e9bece33 <unknown>
+#8 0x5b29e9bb8cc0 <unknown>
+#9 0x5b29e9bba471 <unknown>
+#10 0x5b29ea0621df <unknown>
+#11 0x5b29ea0662dd <unknown>
+#12 0x5b29ea04ee87 <unknown>
+#13 0x5b29ea066a4e <unknown>
+#14 0x5b29ea0350fe <unknown>
+#15 0x5b29ea085908 <unknown>
+#16 0x5b29ea085b13 <unknown>
+#17 0x5b29ea095b9c <unknown>
+#18 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:11:23,660 - INFO - Processing API number: Finish
+2025-02-21 18:11:32,666 - WARNING - No well link found for API Finish
+2025-02-21 18:11:33,667 - INFO - Processing API number: 33-053-06055
+2025-02-21 18:11:51,080 - ERROR - Error extracting details for API 33-053-06055: Message: 
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9bc73ca <unknown>
+#3 0x5b29e9bc7551 <unknown>
+#4 0x5b29e9c15d34 <unknown>
+#5 0x5b29e9bed08d <unknown>
+#6 0x5b29e9c130a7 <unknown>
+#7 0x5b29e9bece33 <unknown>
+#8 0x5b29e9bb8cc0 <unknown>
+#9 0x5b29e9bba471 <unknown>
+#10 0x5b29ea0621df <unknown>
+#11 0x5b29ea0662dd <unknown>
+#12 0x5b29ea04ee87 <unknown>
+#13 0x5b29ea066a4e <unknown>
+#14 0x5b29ea0350fe <unknown>
+#15 0x5b29ea085908 <unknown>
+#16 0x5b29ea085b13 <unknown>
+#17 0x5b29ea095b9c <unknown>
+#18 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:11:52,083 - INFO - Processing API number: 103° 36' 11.380 W
+2025-02-21 18:11:56,119 - ERROR - Error processing row 14 with API 103° 36' 11.380 W: Message: invalid selector: Unable to locate an element with the xpath expression //td[contains(text(),'103° 36' 11.380 W')]/following-sibling::td/a because of the following error:
+SyntaxError: Failed to execute 'evaluate' on 'Document': The string '//td[contains(text(),'103° 36' 11.380 W')]/following-sibling::td/a' is not a valid XPath expression.
+  (Session info: chrome=133.0.6943.53); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalid-selector-exception
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9b7dd6f <unknown>
+#3 0x5b29e9b802e3 <unknown>
+#4 0x5b29e9b80393 <unknown>
+#5 0x5b29e9bc6df3 <unknown>
+#6 0x5b29e9bc7551 <unknown>
+#7 0x5b29e9c15d34 <unknown>
+#8 0x5b29e9bed08d <unknown>
+#9 0x5b29e9c130a7 <unknown>
+#10 0x5b29e9bece33 <unknown>
+#11 0x5b29e9bb8cc0 <unknown>
+#12 0x5b29e9bba471 <unknown>
+#13 0x5b29ea0621df <unknown>
+#14 0x5b29ea0662dd <unknown>
+#15 0x5b29ea04ee87 <unknown>
+#16 0x5b29ea066a4e <unknown>
+#17 0x5b29ea0350fe <unknown>
+#18 0x5b29ea085908 <unknown>
+#19 0x5b29ea085b13 <unknown>
+#20 0x5b29ea095b9c <unknown>
+#21 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:11:57,122 - INFO - Processing API number: Finish
+2025-02-21 18:12:06,290 - WARNING - No well link found for API Finish
+2025-02-21 18:12:07,291 - INFO - Processing API number: Finish
+2025-02-21 18:12:16,456 - WARNING - No well link found for API Finish
+2025-02-21 18:12:17,457 - INFO - Processing API number: 33-053-06022
+2025-02-21 18:12:35,433 - ERROR - Error extracting details for API 33-053-06022: Message: 
+Stacktrace:
+#0 0x5b29ea096f2a <unknown>
+#1 0x5b29e9b770c0 <unknown>
+#2 0x5b29e9bc73ca <unknown>
+#3 0x5b29e9bc7551 <unknown>
+#4 0x5b29e9c15d34 <unknown>
+#5 0x5b29e9bed08d <unknown>
+#6 0x5b29e9c130a7 <unknown>
+#7 0x5b29e9bece33 <unknown>
+#8 0x5b29e9bb8cc0 <unknown>
+#9 0x5b29e9bba471 <unknown>
+#10 0x5b29ea0621df <unknown>
+#11 0x5b29ea0662dd <unknown>
+#12 0x5b29ea04ee87 <unknown>
+#13 0x5b29ea066a4e <unknown>
+#14 0x5b29ea0350fe <unknown>
+#15 0x5b29ea085908 <unknown>
+#16 0x5b29ea085b13 <unknown>
+#17 0x5b29ea095b9c <unknown>
+#18 0x79bf4280dac3 <unknown>
+
+2025-02-21 18:12:36,436 - INFO - Processing API number: 33-053-05924
+2025-02-21 18:12:42,655 - WARNING - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectionResetError(104, 'Connection reset by peer')': /session/540f68843200b7a56cfb76741d50f5ab
+2025-02-21 18:12:42,660 - WARNING - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x742b43b48530>: Failed to establish a new connection: [Errno 111] Connection refused')': /session/540f68843200b7a56cfb76741d50f5ab
+2025-02-21 18:12:42,669 - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x742b43b48f20>: Failed to establish a new connection: [Errno 111] Connection refused')': /session/540f68843200b7a56cfb76741d50f5ab

@@ -1,6 +1,6 @@
 import re
 import pandas as pd 
-df = pd.read_csv("data.csv", delimiter = ",")
+df = pd.read_csv("API.csv", delimiter = ",")
 df.columns = df.columns.str.strip()
 #df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
 def clean_data(value):
