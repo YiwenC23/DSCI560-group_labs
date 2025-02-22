@@ -1,11 +1,15 @@
 ﻿import os
 import re
+import csv
 import time
 import cv2 as cv
 import numpy as np
+import requests
 import pytesseract as pt
 from tqdm import tqdm
 from pdf2image import convert_from_path
+from joblib import Parallel, delayed
+from collections import Counter
 
 
 #* Function to convert PDF to images
@@ -181,13 +185,183 @@ def extract_text(image_path):
         
         return text
 
+def extract_text(image_path):
+    src = cv.imread(image_path, cv.IMREAD_COLOR)
+    custom_config = r"--oem 3 --psm 6"
+    
+    image, src_noTable, boxes = detect_table(src)
+    
+    def extract_text_from_box(box, image):
+        x1, y1, x2, y2 = box
+        roi = image[y1:y2, x1:x2]
+        box_text = pt.image_to_string(roi, config=custom_config).strip()
+        return box_text
+    
+    if boxes:
+        box_texts = []
+        for _, box in enumerate(boxes):
+            box_text = extract_text_from_box(box, image)
+            box_texts.append(box_text)
+        
+        text_box = "\n\n".join(box_texts) + "\n"
+        text_noTable = pt.image_to_string(src_noTable, config=custom_config).strip()
+        text_overall = text_box + "\n" + text_noTable
+        
+        return text_overall
+    
+    else:
+        text = pt.image_to_string(src, config=custom_config, lang="eng").strip()
+        
+        return text
+
+
+def extract_content(text):
+    extracted_data = {}
+    
+    field_patterns = {
+        "Operator": r"\bOperator\b:?.*?([A-Z]\w+\s.*[^\d+\W])",
+        "Well Name": r"\bWell\b\s+\bName\b\s+\band\b\s+\bNumber\b:?.*?([A-Z]\w+.*?\d[A-Z])",
+        "API": r"(\d{2}-\d{3}-\d{5})",
+        "County": r"\bCounty\b:?\s*?\|?\s*(.+),?",
+        "State": r"\bState\b:?\s*?\|?\s*([A-Z][A-Z]).*?",
+        "Footages": r"Footages\b.*?(\d+[^\n]+)",
+        "Section": r"\bSection\b:?.*?(\d+).*?",
+        "Township": r"\bTownship\b.*?(\d+[^\n]+)",
+        "Range": r"\bRange\b.*?(\d+[^\n]+)",
+        "Latitude": r"(\d+°\s*\d+'\s*\d+\.\d+\s[NS])",
+        "Longitude": r"(\d+°\s*\d+'\s*\d+\.\d+\s[EW])",
+    }
+    
+    
+    for key, pattern in field_patterns.items():
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            groups = match.groups()
+            if len(groups) == 1:
+                value = groups[0].strip()
+                if key == "County":
+                    url = "https://raw.githubusercontent.com/raphaelreyna/State-County-City/master/state-county-city_data.json"
+                    response = requests.get(url)
+                    county_data = response.json()
+                    for state, counties in county_data.items():
+                        if counties and isinstance(counties, dict):
+                            if value in counties:
+                                extracted_data["County"] = value
+                                break
+                        else:
+                            pass
+                else: 
+                    pass
+                extracted_data[key] = value
+            else:
+                pass
+    
+    return extracted_data
+
+
+def process_image(image_path):
+    try:
+        img_text = extract_text(image_path)
+        extracted_data = extract_content(img_text)
+        for key, value in extracted_data.items():
+            if isinstance(value, tuple):
+                extracted_data[key] = " ".join(value)
+        return extracted_data
+    except Exception as e:
+        print(f"Error processing {image_path}: {e}")
+        return {}
+
+
+def select_value(values):
+    
+    if not values:
+        return None
+    
+    longest_run_value = values[0]
+    longest_run_length = 1
+    current_value = values[0]
+    current_length = 1
+    
+    for val in values[1:]:
+        if val == current_value:
+            current_length += 1
+        
+        else:
+            if current_length > longest_run_length:
+                longest_run_length = current_length
+                longest_run_value = current_value
+            
+            current_value = val
+            current_length = 1
+    
+    if current_length > longest_run_length:
+        longest_run_length = current_length
+        longest_run_value = current_value
+    
+    if longest_run_length > 1:
+        return longest_run_value
+    
+    counts = Counter(values)
+    max_freq = max(counts.values())
+    
+    if max_freq > 1:
+        candidates = [v for v, cnt in counts.items() if cnt == max_freq]
+        return sorted(candidates)[0]
+    else:
+        return sorted(values)[0]
+
 
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    pdf_dir = "/Users/yiwen/Downloads/DSCI560_Lab5/"
-    output_base = os.path.join(BASE_DIR, "../data/raw_data/")
+    txt_dir = os.path.join(BASE_DIR, "../data/processed_data/pdf_images_txt/")
     output_txtdir = os.path.join(BASE_DIR, "../data/processed_data/pdf_images_txt/")
-    files = [f.path for f in os.scandir(pdf_dir) if f.is_file()]
-    
-    
-    pdf_to_images(files, output_base)
+
+    txt_files = [txt.path for txt in os.scandir(txt_dir) if txt.is_file() and txt.name.endswith(".txt")]
+
+    file_results = {}
+    for txt_file in tqdm(txt_files, total=len(txt_files), position=0, desc="Processing txt files"):
+        file_name = os.path.basename(txt_file).split("_")[0]
+        
+        with open(txt_file, "r") as f:
+            image_paths = [line.strip() for line in f.readlines()]
+        
+        keyword_list = ["Operator", "Well Name", "API", "County", "State", "Footages", "Section", "Township", "Range", "Latitude", "Longitude"]
+        
+        def process_image(image_path):
+            img_text = extract_text(image_path)
+            extracted_data = extract_content(img_text)
+            for key, value in extracted_data.items():
+                if isinstance(value, tuple):
+                    extracted_data[key] = " ".join(value)
+            return extracted_data
+        
+        results = Parallel(n_jobs=-1, timeout=99999)(
+            delayed(process_image)(path) for path in tqdm(image_paths, position=1, leave=False, desc=f"Processing the images of {file_name} file")
+        )
+        
+        values = {key: [] for key in keyword_list}
+        for extracted_data in results:
+            for key, value in extracted_data.items():
+                values[key].append(value)
+        
+        final_result = {}
+        for key in keyword_list:
+            final_result[key] = select_value(values[key])
+        
+    csv_path = os.path.join(BASE_DIR, "../well_info.csv")
+    with open(csv_path, mode="a", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+        writer.writerow([
+            file_name,
+            final_result["Operator"],
+            final_result["Well Name"],
+            final_result["API"],
+            final_result["County"],
+            final_result["State"],
+            final_result["Footages"],
+            final_result["Section"],
+            final_result["Township"],
+            final_result["Range"],
+            final_result["Latitude"],
+            final_result["Longitude"]
+        ])
