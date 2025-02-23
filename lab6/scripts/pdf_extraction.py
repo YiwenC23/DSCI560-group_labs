@@ -1,6 +1,6 @@
 ﻿import os
 import re
-import csv
+import json
 import time
 import cv2 as cv
 import numpy as np
@@ -11,6 +11,7 @@ from pdf2image import convert_from_path
 from joblib import Parallel, delayed
 from collections import Counter
 
+from database import SessionLocal, WellInfo
 
 #* Function to convert PDF to images
 def pdf_to_images(input_files, output_base, dpi=300, thread_count=24):
@@ -43,8 +44,7 @@ def pdf_to_images(input_files, output_base, dpi=300, thread_count=24):
 
 
 #* Function to preprocess the image
-def img_preprocess(image_path):
-    image = cv.imread(image_path)
+def img_preprocess(image):
     gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
     
     binary = cv.adaptiveThreshold(
@@ -53,31 +53,12 @@ def img_preprocess(image_path):
         cv.THRESH_BINARY, 11, 2
     )
     
-    denoised = cv.medianBlur(binary, 3)
+    denoised = cv.medianBlur(binary, 5)
     
     kernel = np.ones((3, 3), np.uint8)
-    processed = cv.morphologyEx(denoised, cv.MORPH_CLOSE, kernel)
+    processed = cv.morphologyEx(denoised, cv.MORPH_OPEN, kernel)
     
-    def deskew(processed_img):
-        coords = np.column_stack(np.where(processed_img == 0))
-        angle = cv.minAreaRect(coords)[-1]
-        
-        if angle < -45:
-            angle = -(90 + angle)
-        else:
-            angle = -angle
-        
-        (h, w) = processed_img.shape[:2]
-        center = (w // 2, h // 2)
-        
-        M = cv.getRotationMatrix2D(center, angle, 1.0)
-        rotation = cv.warpAffine(processed_img, M, (w, h), flags=cv.INTER_CUBIC, borderMode=cv.BORDER_REPLICATE)
-        
-        return rotation
-    
-    preprocessed_image = deskew(processed)
-    
-    return preprocessed_image
+    return processed
 
 
 #* Function to detect table in the image
@@ -222,7 +203,7 @@ def extract_content(text):
         "Operator": r"\bOperator\b:?.*?([A-Z]\w+\s.*[^\d+\W])",
         "Well Name": r"\bWell\b\s+\bName\b\s+\band\b\s+\bNumber\b:?.*?([A-Z]\w+.*?\d[A-Z])",
         "API": r"(\d{2}-\d{3}-\d{5})",
-        "County": r"\bCounty\b:?\s*?\|?\s*(.+),?",
+        "County": r"\bCounty\b:?\s*?\|?\s*(?!,)(.+)",
         "State": r"\bState\b:?\s*?\|?\s*([A-Z][A-Z]).*?",
         "Footages": r"Footages\b.*?(\d+[^\n]+)",
         "Section": r"\bSection\b:?.*?(\d+).*?",
@@ -230,8 +211,20 @@ def extract_content(text):
         "Range": r"\bRange\b.*?(\d+[^\n]+)",
         "Latitude": r"(\d+°\s*\d+'\s*\d+\.\d+\s[NS])",
         "Longitude": r"(\d+°\s*\d+'\s*\d+\.\d+\s[EW])",
+        "Date Stimulated": r"Date\s*?Stimulated\b.*?(\d{2}/\d{2}/\d{4})",
+        "Stimulated Formation": r"Stimulated?\s*?\BFormation\b:?\s*?\|?\s*?([A-Z][a-z]+)",
+        "Top": r"Top.*?:?\s*?\|?\s*?(\d+[^\n]+)",
+        "Bottom": r"Bottom.*?:?\s*?\|?\s*?(\d+[^\n]+)",
+        "Stimulation Stages": r"Stimulation?\s\bStages\b:?\|?\s*?(\d\d?)",
+        "Volume": r"\bVolume\b.*?:?\s*?\|?\s*?(\d+[^\n]+)",
+        "Volume Unites": r"\bVolume\b.*?:?\s*?\|?\s*?([A-Z][a-z]+)",
+        "Type Treatment": r"Type?\s*?\bTreatment\b\s*?:?\s*?\|?\s*?([A-Z][a-z]+\s[A-Z][a-z]+?)",
+        "Acid": r"Acid\s*?\%?\s*?:?\s*?\|?\s*?(\d+[^\n]+)",
+        "Lbs Proppant": r"Lbs\s*?Proppant\s*?:?\s*?\|?\s*?(\d+[^\n]+)",
+        "Maximum Treatment Pressure": r"Maximum\s*?Treatment\s*?Pressure\s*?:?\s*?\|?\s*?(\d+[^\n]+)",
+        "Maximum Treatment Rate": r"Maximum\s*?Treatment\s*?Rate\s*?:?\s*?\|?\s*?(\d+[^\n]+)",
+        "Details": r"Details\s*?:?\s*?\|?\s*?(.+)",
     }
-    
     
     for key, pattern in field_patterns.items():
         match = re.search(pattern, text, re.IGNORECASE)
@@ -239,19 +232,6 @@ def extract_content(text):
             groups = match.groups()
             if len(groups) == 1:
                 value = groups[0].strip()
-                if key == "County":
-                    url = "https://raw.githubusercontent.com/raphaelreyna/State-County-City/master/state-county-city_data.json"
-                    response = requests.get(url)
-                    county_data = response.json()
-                    for state, counties in county_data.items():
-                        if counties and isinstance(counties, dict):
-                            if value in counties:
-                                extracted_data["County"] = value
-                                break
-                        else:
-                            pass
-                else: 
-                    pass
                 extracted_data[key] = value
             else:
                 pass
@@ -272,25 +252,55 @@ def process_image(image_path):
         return {}
 
 
-def select_value(values):
+def longest_common_prefix(str_list):
+    if not str_list:
+        return ""
+    prefix = str_list[0]
     
+    for s in str_list[1:]:
+        while not s.startswith(prefix):
+            prefix = prefix[:-1]
+            if not prefix:
+                return ""
+    return prefix
+
+
+def trim_value_by_keywords(value, keywords):
+    min_index = len(value)
+    
+    for kw in keywords:
+        idx = value.find(kw)
+        if idx != -1 and idx < min_index:
+            min_index = idx
+    
+    return value[:min_index].strip() if min_index < len(value) else value
+
+
+def select_value(values, keywords=None):
     if not values:
         return None
     
-    longest_run_value = values[0]
+    if keywords:
+        processed_values = [trim_value_by_keywords(val, keywords) for val in values]
+    else:
+        processed_values = values
+    
+    common_part = longest_common_prefix(processed_values)
+    if common_part:
+        return common_part
+    
+    longest_run_value = processed_values[0]
     longest_run_length = 1
-    current_value = values[0]
+    current_value = processed_values[0]
     current_length = 1
     
-    for val in values[1:]:
+    for val in processed_values[1:]:
         if val == current_value:
             current_length += 1
-        
         else:
             if current_length > longest_run_length:
                 longest_run_length = current_length
                 longest_run_value = current_value
-            
             current_value = val
             current_length = 1
     
@@ -301,23 +311,32 @@ def select_value(values):
     if longest_run_length > 1:
         return longest_run_value
     
-    counts = Counter(values)
+    counts = Counter(processed_values)
     max_freq = max(counts.values())
     
     if max_freq > 1:
         candidates = [v for v, cnt in counts.items() if cnt == max_freq]
         return sorted(candidates)[0]
     else:
-        return sorted(values)[0]
+        return sorted(processed_values)[0]
 
 
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    output_base = os.path.join(BASE_DIR, "../data/raw_data/")
+    input_files = os.path.join(BASE_DIR, "../data/raw_data/DSCI560_Lab5/")
+    pdf_to_images(input_files, output_base, dpi=300, thread_count=24)
     txt_dir = os.path.join(BASE_DIR, "../data/processed_data/pdf_images_txt/")
     output_txtdir = os.path.join(BASE_DIR, "../data/processed_data/pdf_images_txt/")
-
+    
     txt_files = [txt.path for txt in os.scandir(txt_dir) if txt.is_file() and txt.name.endswith(".txt")]
-
+    
+    url = "https://raw.githubusercontent.com/raphaelreyna/State-County-City/master/state-county-city_data.json"
+    response = requests.get(url)
+    county_state_data = response.json()
+    with open("county_state_data.json", "w") as f:
+        json.dump(county_state_data, f)
+    
     file_results = {}
     for txt_file in tqdm(txt_files, total=len(txt_files), position=0, desc="Processing txt files"):
         file_name = os.path.basename(txt_file).split("_")[0]
@@ -325,7 +344,11 @@ if __name__ == "__main__":
         with open(txt_file, "r") as f:
             image_paths = [line.strip() for line in f.readlines()]
         
-        keyword_list = ["Operator", "Well Name", "API", "County", "State", "Footages", "Section", "Township", "Range", "Latitude", "Longitude"]
+        keyword_list = [
+            "Operator", "Well Name", "API", "County", "State", "Footages", "Section", "Township", "Range", "Latitude", "Longitude",
+            "Date Stimulated", "Stimulated Formation", "Top", "Bottom", "Stimulation Stages", "Volume", "Volume Unites", "Type Treatment",
+            "Acid", "Lbs Proppant", "Maximum Treatment Pressure", "Maximum Treatment Rate", "Details"
+        ]
         
         def process_image(image_path):
             img_text = extract_text(image_path)
@@ -348,20 +371,7 @@ if __name__ == "__main__":
         for key in keyword_list:
             final_result[key] = select_value(values[key])
         
-    csv_path = os.path.join(BASE_DIR, "../well_info.csv")
-    with open(csv_path, mode="a", newline="", encoding="utf-8") as csvfile:
-        writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
-        writer.writerow([
-            file_name,
-            final_result["Operator"],
-            final_result["Well Name"],
-            final_result["API"],
-            final_result["County"],
-            final_result["State"],
-            final_result["Footages"],
-            final_result["Section"],
-            final_result["Township"],
-            final_result["Range"],
-            final_result["Latitude"],
-            final_result["Longitude"]
-        ])
+        if final_result["County"] in ["Williams", "McKenzie"]:
+            final_result["State"] = "North Dakota"
+            
+        
