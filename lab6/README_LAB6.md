@@ -98,5 +98,6 @@ python web_scraper.py
 "Please enter the password for the database:" [password] #Enter MySQL passowrd.
 "Please enter the database name:" [database] #Enter the database name where you want to store the data.
 ```
+
 ### Notes
 We include many other programs in the script folder, but they are not necessarily all useful as we mainly use it as a function call reference if we need. You can freely check any other scripts for more information that you are interested in. However, our main scripts for this lab will be database.py’, 'pdf_extraction.py’, and 'web_scraper.py'.
