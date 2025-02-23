@@ -140,9 +140,10 @@ def detect_table(src):
 
 #* Function to extract text from the image
 def extract_text(image_path):
+    src = cv.imread(image_path, cv.IMREAD_COLOR)
     custom_config = r"--oem 3 --psm 6"
     
-    image, src_noTable, boxes = detect_table(image_path)
+    image, src_noTable, boxes = detect_table(src)
     
     def extract_text_from_box(box, image):
         x1, y1, x2, y2 = box
@@ -163,7 +164,7 @@ def extract_text(image_path):
         return text_overall
     
     else:
-        prepro_img = img_preprocess(image_path)
+        prepro_img = img_preprocess(src)
         text = pt.image_to_string(prepro_img, config=custom_config)
         
         return text
