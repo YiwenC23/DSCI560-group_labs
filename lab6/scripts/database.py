@@ -31,6 +31,11 @@ class WellInfo(Base):
     maximum_treatment_pressure = sql.Column(sql.VARCHAR(50))
     maximum_treatment_rate = sql.Column(sql.VARCHAR(50))
     details = sql.Column(sql.Text)
+    well_status = sql.Column(sql.VARCHAR(50))        
+    well_type = sql.Column(sql.VARCHAR(50))         
+    closest_city = sql.Column(sql.VARCHAR(50))       
+    barrels_produced = sql.Column(sql.VARCHAR(100))  
+    mcf_gas_produced = sql.Column(sql.VARCHAR(100))
     
     __table_args__ = (
         sql.Index("idx_well_info_API", "API", unique=True),
@@ -41,13 +46,9 @@ class WellInfo(Base):
 def connect_db():
     while True:
         #? Get the database credentials from the user
-        # db_username = input("[System] Please enter the username for the database: ")
-        # db_password = input("[System] Please enter the password for the database: ")
-        # db_name = input("[System] Please enter the database name: ")
-        
-        db_username = "root"
-        db_password = "yiwen960131"
-        db_name = "lab6"
+        db_username = input("[System] Please enter the username for the database: ")
+        db_password = input("[System] Please enter the password for the database: ")
+        db_name = input("[System] Please enter the database name: ")
         
         conn_url = f"mysql+pymysql://{db_username}:{db_password}@localhost/{db_name}"
     
