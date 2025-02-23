@@ -65,8 +65,7 @@ def img_preprocess(image):
 
 
 #* Function to detect table in the image
-def detect_table(image_path):
-    src = cv.imread(image_path, cv.IMREAD_COLOR)
+def detect_table(src):
     if len(src.shape) != 2:
         gray = cv.cvtColor(src, cv.COLOR_BGR2GRAY)
     else:
