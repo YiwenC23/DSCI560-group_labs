@@ -14,16 +14,19 @@ from collections import Counter
 from database import SessionLocal, WellInfo
 
 #* Function to convert PDF to images
-def pdf_to_images(input_files, output_base, dpi=300, thread_count=24):
-    for _, file in enumerate(tqdm(input_files, total=len(input_files), position=0, desc="Processing PDFs'")):
+def pdf_to_images(input_path, output_base, dpi=300, thread_count=24):
+    files = [f.path for f in os.scandir(input_path) if f.is_file() and f.name.endswith(".pdf")]
+    
+    for _, file in enumerate(tqdm(files, total=len(files), position=0, desc="Processing PDFs'")):
         file_name, _= os.path.splitext(os.path.basename(file))
         output_dir = os.path.join(output_base, file_name)
+        txt_dir = os.path.join(output_base, "../processed_data/pdf_images_txt/")
         
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         
-        if not os.path.exists(output_txtdir):
-            os.makedirs(output_txtdir)
+        if not os.path.exists(txt_dir):
+            os.makedirs(txt_dir)
         
         images = convert_from_path(
             file,
@@ -35,12 +38,12 @@ def pdf_to_images(input_files, output_base, dpi=300, thread_count=24):
         for i, image in enumerate(tqdm(images, total=len(images), position=1, leave=False, desc=f"Converting {file_name} PDF file to images")):
             image.save(f"{output_dir}/page_{i+1}.jpg", "JPEG")
             
-            with open(os.path.join(output_txtdir, f"{file_name}_imagelist.txt"), "a") as f:
+            with open(os.path.join(txt_dir, f"{file_name}_imagelist.txt"), "a") as f:
                 f.write(f"{output_dir}/page_{i+1}.jpg\n")
             
             time.sleep(0.01)
     
-    print(f"Converted all {len(input_files)} to images and saved in output folder.")
+    print(f"Converted all {len(input_path)} to images and saved in output folder.")
 
 
 #* Function to preprocess the image
@@ -166,64 +169,35 @@ def extract_text(image_path):
         
         return text
 
-def extract_text(image_path):
-    src = cv.imread(image_path, cv.IMREAD_COLOR)
-    custom_config = r"--oem 3 --psm 6"
-    
-    image, src_noTable, boxes = detect_table(src)
-    
-    def extract_text_from_box(box, image):
-        x1, y1, x2, y2 = box
-        roi = image[y1:y2, x1:x2]
-        box_text = pt.image_to_string(roi, config=custom_config).strip()
-        return box_text
-    
-    if boxes:
-        box_texts = []
-        for _, box in enumerate(boxes):
-            box_text = extract_text_from_box(box, image)
-            box_texts.append(box_text)
-        
-        text_box = "\n\n".join(box_texts) + "\n"
-        text_noTable = pt.image_to_string(src_noTable, config=custom_config).strip()
-        text_overall = text_box + "\n" + text_noTable
-        
-        return text_overall
-    
-    else:
-        text = pt.image_to_string(src, config=custom_config, lang="eng").strip()
-        
-        return text
-
 
 def extract_content(text):
     extracted_data = {}
     
     field_patterns = {
-        "Operator": r"\bOperator\b:?.*?([A-Z]\w+\s.*[^\d+\W])",
-        "Well Name": r"\bWell\b\s+\bName\b\s+\band\b\s+\bNumber\b:?.*?([A-Z]\w+.*?\d[A-Z])",
+        "operator": r"\bOperator\b:?.*?([A-Z]\w+\s.*[^\d+\W])",
+        "well_name": r"\bWell\b\s+\bName\b\s+\band\b\s+\bNumber\b:?.*?([A-Z]\w+.*?\d[A-Z])",
         "API": r"(\d{2}-\d{3}-\d{5})",
-        "County": r"\bCounty\b:?\s*?\|?\s*(?!,)(.+)",
-        "State": r"\bState\b:?\s*?\|?\s*([A-Z][A-Z]).*?",
-        "Footages": r"Footages\b.*?(\d+[^\n]+)",
-        "Section": r"\bSection\b:?.*?(\d+).*?",
-        "Township": r"\bTownship\b.*?(\d+[^\n]+)",
-        "Range": r"\bRange\b.*?(\d+[^\n]+)",
-        "Latitude": r"(\d+°\s*\d+'\s*\d+\.\d+\s[NS])",
-        "Longitude": r"(\d+°\s*\d+'\s*\d+\.\d+\s[EW])",
-        "Date Stimulated": r"Date\s*?Stimulated\b.*?(\d{2}/\d{2}/\d{4})",
-        "Stimulated Formation": r"Stimulated?\s*?\BFormation\b:?\s*?\|?\s*?([A-Z][a-z]+)",
-        "Top": r"Top.*?:?\s*?\|?\s*?(\d+[^\n]+)",
-        "Bottom": r"Bottom.*?:?\s*?\|?\s*?(\d+[^\n]+)",
-        "Stimulation Stages": r"Stimulation?\s\bStages\b:?\|?\s*?(\d\d?)",
-        "Volume": r"\bVolume\b.*?:?\s*?\|?\s*?(\d+[^\n]+)",
-        "Volume Unites": r"\bVolume\b.*?:?\s*?\|?\s*?([A-Z][a-z]+)",
-        "Type Treatment": r"Type?\s*?\bTreatment\b\s*?:?\s*?\|?\s*?([A-Z][a-z]+\s[A-Z][a-z]+?)",
-        "Acid": r"Acid\s*?\%?\s*?:?\s*?\|?\s*?(\d+[^\n]+)",
-        "Lbs Proppant": r"Lbs\s*?Proppant\s*?:?\s*?\|?\s*?(\d+[^\n]+)",
-        "Maximum Treatment Pressure": r"Maximum\s*?Treatment\s*?Pressure\s*?:?\s*?\|?\s*?(\d+[^\n]+)",
-        "Maximum Treatment Rate": r"Maximum\s*?Treatment\s*?Rate\s*?:?\s*?\|?\s*?(\d+[^\n]+)",
-        "Details": r"Details\s*?:?\s*?\|?\s*?(.+)",
+        "county": r"\bCounty\b:?\s*?\|?\s*(?!,)(.+)",
+        "state": r"\bState\b:?\s*?\|?\s*([A-Z][A-Z]).*?",
+        "footages": r"Footages\b.*?(\d+[^\n]+)",
+        "section": r"\bSection\b:?.*?(\d+).*?",
+        "township": r"\bTownship\b.*?(\d+[^\n]+)",
+        "range": r"\bRange\b.*?(\d+[^\n]+)",
+        "latitude": r"(\d+°\s*\d+'\s*\d+\.\d+\s[NS])",
+        "longitude": r"(\d+°\s*\d+'\s*\d+\.\d+\s[EW])",
+        "date_stimulated": r"Date\s*?Stimulated\b.*?(\d{2}/\d{2}/\d{4})",
+        "stimulated_formation": r"Stimulated?\s*?\BFormation\b:?\s*?\|?\s*?([A-Z][a-z]+)",
+        "top": r"Top.*?:?\s*?\|?\s*?(\d+[^\n]+)",
+        "bottom": r"Bottom.*?:?\s*?\|?\s*?(\d+[^\n]+)",
+        "stimulation_stages": r"Stimulation?\s\bStages\b:?\|?\s*?(\d\d?)",
+        "volume": r"\bVolume\b.*?:?\s*?\|?\s*?(\d+[^\n]+)",
+        "volume_unites": r"\bVolume\b.*?:?\s*?\|?\s*?([A-Z][a-z]+)",
+        "type_treatment": r"Type?\s*?\bTreatment\b\s*?:?\s*?\|?\s*?([A-Z][a-z]+\s[A-Z][a-z]+?)",
+        "acid": r"Acid\s*?\%?\s*?:?\s*?\|?\s*?(\d+[^\n]+)",
+        "lbs_proppant": r"Lbs\s*?Proppant\s*?:?\s*?\|?\s*?(\d+[^\n]+)",
+        "maximum_treatment_pressure": r"Maximum\s*?Treatment\s*?Pressure\s*?:?\s*?\|?\s*?(\d+[^\n]+)",
+        "maximum_treatment_rate": r"Maximum\s*?Treatment\s*?Rate\s*?:?\s*?\|?\s*?(\d+[^\n]+)",
+        "details": r"Details\s*?:?\s*?\|?\s*?(.+)",
     }
     
     for key, pattern in field_patterns.items():
@@ -321,13 +295,26 @@ def select_value(values, keywords=None):
         return sorted(processed_values)[0]
 
 
+def data_storage(data):
+    db = SessionLocal()
+    try:
+        well_info = WellInfo(**data)
+        db.add(well_info)
+        db.commit()
+    except Exception as e:
+        print(f"Error storing data: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     output_base = os.path.join(BASE_DIR, "../data/raw_data/")
-    input_files = os.path.join(BASE_DIR, "../data/raw_data/DSCI560_Lab5/")
-    pdf_to_images(input_files, output_base, dpi=300, thread_count=24)
+    input_path = os.path.join(BASE_DIR, "../data/raw_data/DSCI560_Lab6/")
+    pdf_to_images(input_path, output_base, dpi=300, thread_count=24)
+    
     txt_dir = os.path.join(BASE_DIR, "../data/processed_data/pdf_images_txt/")
-    output_txtdir = os.path.join(BASE_DIR, "../data/processed_data/pdf_images_txt/")
     
     txt_files = [txt.path for txt in os.scandir(txt_dir) if txt.is_file() and txt.name.endswith(".txt")]
     
@@ -345,9 +332,9 @@ if __name__ == "__main__":
             image_paths = [line.strip() for line in f.readlines()]
         
         keyword_list = [
-            "Operator", "Well Name", "API", "County", "State", "Footages", "Section", "Township", "Range", "Latitude", "Longitude",
-            "Date Stimulated", "Stimulated Formation", "Top", "Bottom", "Stimulation Stages", "Volume", "Volume Unites", "Type Treatment",
-            "Acid", "Lbs Proppant", "Maximum Treatment Pressure", "Maximum Treatment Rate", "Details"
+            "operator", "well_name", "API", "county", "state", "footages", "section", "township", "range", "latitude", "longitude",
+            "date_stimulated", "stimulated_formation", "top", "bottom", "stimulation_stages", "volume", "volume_unites", "type_treatment",
+            "acid", "lbs_proppant", "maximum_treatment_pressure", "maximum_treatment_rate", "details"
         ]
         
         def process_image(image_path):
@@ -371,7 +358,7 @@ if __name__ == "__main__":
         for key in keyword_list:
             final_result[key] = select_value(values[key])
         
-        if final_result["County"] in ["Williams", "McKenzie"]:
-            final_result["State"] = "North Dakota"
-            
+        if final_result["county"] in ["Williams", "McKenzie"]:
+            final_result["state"] = "North Dakota"
         
+        data_storage(final_result)
