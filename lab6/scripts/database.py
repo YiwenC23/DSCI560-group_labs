@@ -42,6 +42,8 @@ class WellStatus(Base):
     __tablename__ = "well_status"
     well_name = sql.Column(sql.VARCHAR(255))
     API = sql.Column(sql.CHAR(12), primary_key=True)
+    county = sql.Column(sql.VARCHAR(50))
+    state = sql.Column(sql.VARCHAR(50))
     well_status = sql.Column(sql.VARCHAR(50))        
     well_type = sql.Column(sql.VARCHAR(50))         
     closest_city = sql.Column(sql.VARCHAR(50))       
