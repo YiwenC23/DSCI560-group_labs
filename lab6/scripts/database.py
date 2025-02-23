@@ -7,7 +7,7 @@ Base = declarative_base()
 #* Define the WellInfo Table Class
 class WellInfo(Base):
     __tablename__ = "well_info"
-    well_name = sql.Column(sql.VARCHAR(255), primary_key=True)
+    well_name = sql.Column(sql.VARCHAR(255))
     API = sql.Column(sql.CHAR(12), primary_key=True)
     operator = sql.Column(sql.VARCHAR(255))
     county = sql.Column(sql.VARCHAR(255))
@@ -31,6 +31,17 @@ class WellInfo(Base):
     maximum_treatment_pressure = sql.Column(sql.VARCHAR(50))
     maximum_treatment_rate = sql.Column(sql.VARCHAR(50))
     details = sql.Column(sql.Text)
+    
+    __table_args__ = (
+        sql.Index("idx_well_info_API", "API", unique=True),
+        {"extend_existing": True}
+    )
+
+
+class WellStatus(Base):
+    __tablename__ = "well_status"
+    well_name = sql.Column(sql.VARCHAR(255))
+    API = sql.Column(sql.CHAR(12), primary_key=True)
     well_status = sql.Column(sql.VARCHAR(50))        
     well_type = sql.Column(sql.VARCHAR(50))         
     closest_city = sql.Column(sql.VARCHAR(50))       
@@ -38,9 +49,10 @@ class WellInfo(Base):
     mcf_gas_produced = sql.Column(sql.VARCHAR(100))
     
     __table_args__ = (
-        sql.Index("idx_well_info_API", "API", unique=True),
+        sql.Index("idx_well_status_API", "API", unique=True),
         {"extend_existing": True}
     )
+
 
 #* Define the function to connect to the database
 def connect_db():
