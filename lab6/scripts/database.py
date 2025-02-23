@@ -7,15 +7,30 @@ Base = declarative_base()
 #* Define the WellInfo Table Class
 class WellInfo(Base):
     __tablename__ = "well_info"
-    well_name = sql.Column(sql.VARCHAR(50), primary_key=True)
+    well_name = sql.Column(sql.VARCHAR(255), primary_key=True)
     API = sql.Column(sql.CHAR(12), primary_key=True)
-    operator = sql.Column(sql.VARCHAR(50))
-    county = sql.Column(sql.VARCHAR(50))
-    state = sql.Column(sql.VARCHAR(50))
-    SHL = sql.Column(sql.VARCHAR(100))
-    latitude = sql.Column(sql.FLOAT)
-    longitude = sql.Column(sql.FLOAT)
-    datum = sql.Column(sql.VARCHAR(50))
+    operator = sql.Column(sql.VARCHAR(255))
+    county = sql.Column(sql.VARCHAR(255))
+    state = sql.Column(sql.VARCHAR(255))
+    footages = sql.Column(sql.VARCHAR(255))
+    section = sql.Column(sql.VARCHAR(255))
+    township = sql.Column(sql.VARCHAR(255))
+    range = sql.Column(sql.VARCHAR(255))
+    latitude = sql.Column(sql.VARCHAR(30))
+    longitude = sql.Column(sql.VARCHAR(30))
+    date_stimulated = sql.Column(sql.VARCHAR(50))
+    stimulated_formation = sql.Column(sql.VARCHAR(255))
+    top = sql.Column(sql.VARCHAR(255))
+    bottom = sql.Column(sql.VARCHAR(255))
+    stimulation_stages = sql.Column(sql.Integer)
+    volume = sql.Column(sql.VARCHAR(50))
+    volume_unites = sql.Column(sql.VARCHAR(50))
+    type_treatment = sql.Column(sql.VARCHAR(255))
+    acid = sql.Column(sql.VARCHAR(50))
+    lbs_proppant = sql.Column(sql.VARCHAR(50))
+    maximum_treatment_pressure = sql.Column(sql.VARCHAR(50))
+    maximum_treatment_rate = sql.Column(sql.VARCHAR(50))
+    details = sql.Column(sql.Text)
     
     __table_args__ = (
         sql.Index("idx_well_info_API", "API", unique=True),
@@ -26,9 +41,13 @@ class WellInfo(Base):
 def connect_db():
     while True:
         #? Get the database credentials from the user
-        db_username = input("[System] Please enter the username for the database: ")
-        db_password = input("[System] Please enter the password for the database: ")
-        db_name = input("[System] Please enter the database name: ")
+        # db_username = input("[System] Please enter the username for the database: ")
+        # db_password = input("[System] Please enter the password for the database: ")
+        # db_name = input("[System] Please enter the database name: ")
+        
+        db_username = "root"
+        db_password = "yiwen960131"
+        db_name = "lab6"
         
         conn_url = f"mysql+pymysql://{db_username}:{db_password}@localhost/{db_name}"
     
