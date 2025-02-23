@@ -336,7 +336,7 @@ if __name__ == "__main__":
             "operator", "well_name", "API", "county", "state", "footages", "section", "township", "range", "latitude", "longitude",
             "date_stimulated", "stimulated_formation", "top", "bottom", "stimulation_stages", "volume", "volume_unites", "type_treatment",
             "acid", "lbs_proppant", "maximum_treatment_pressure", "maximum_treatment_rate", "details"
-        ]]
+        ]
         
         results = Parallel(n_jobs=-1, timeout=99999)(
             delayed(process_image)(path) for path in tqdm(image_paths, position=1, leave=False, desc=f"Processing the images of {file_name} file")
