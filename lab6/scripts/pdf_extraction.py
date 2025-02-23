@@ -72,10 +72,11 @@ def detect_table(src):
         gray = src
     
     gray = cv.bitwise_not(gray)
-    bw = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 15, -2)
+    bw = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 7, -2)
+    denoise = cv.medianBlur(bw, 5)
     
-    horizontal = np.copy(bw)
-    vertical = np.copy(bw)
+    horizontal = np.copy(denoise)
+    vertical = np.copy(denoise)
     
     #? Detect horizontal lines
     cols = horizontal.shape[1]
@@ -93,13 +94,13 @@ def detect_table(src):
     vertical = cv.erode(vertical, verticalStructure)
     vertical = cv.dilate(vertical, verticalStructure)
     
-    edges = cv.adaptiveThreshold(vertical, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 3, -2)
+    edges = cv.adaptiveThreshold(vertical, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 7, -2)
     
     kernel = np.ones((2, 2), np.uint8)
     edges = cv.dilate(edges, kernel)
     
     smooth = np.copy(vertical)
-    smooth = cv.blur(smooth, (2, 2))
+    smooth = cv.blur(smooth, (4, 4))
     
     (rows, cols) = np.where(edges == 0)
     vertical[rows, cols] = smooth[rows, cols]
@@ -128,8 +129,8 @@ def detect_table(src):
                 boxes.append((x, y, x + w, y + h))
     
     src_noTable = src.copy()
+    
     if boxes:
-        #? Fill the table with white color for OCR words that are not in the table
         for box in boxes:
             x_min, y_min, x_max, y_max = box
             src_noTable[y_min:y_max, x_min:x_max] = (255, 255, 255)
@@ -148,24 +149,24 @@ def extract_text(image_path):
     def extract_text_from_box(box, image):
         x1, y1, x2, y2 = box
         roi = image[y1:y2, x1:x2]
-        box_text = pt.image_to_string(roi, config=custom_config)
+        box_text = pt.image_to_string(roi, config=custom_config, lang="eng").strip()
         return box_text
     
     if boxes:
         box_texts = []
         for _, box in enumerate(boxes):
-            box_text = extract_text_from_box(box, image)
+            box_text = extract_text_from_box(box, image).replace("\n", " ")
             box_texts.append(box_text)
         
-        text_box = "\n".join(box_texts) + "\n"
-        text_noTable = pt.image_to_string(src_noTable, config=custom_config)
+        text_box ="\n\n".join(box_texts)
+        text_noTable = pt.image_to_string(src_noTable, config=custom_config, lang="eng")
         text_overall = text_box + "\n" + text_noTable
         
         return text_overall
     
     else:
         prepro_img = img_preprocess(src)
-        text = pt.image_to_string(prepro_img, config=custom_config)
+        text = pt.image_to_string(prepro_img, config=custom_config, lang="eng")
         
         return text
 
@@ -335,15 +336,7 @@ if __name__ == "__main__":
             "operator", "well_name", "API", "county", "state", "footages", "section", "township", "range", "latitude", "longitude",
             "date_stimulated", "stimulated_formation", "top", "bottom", "stimulation_stages", "volume", "volume_unites", "type_treatment",
             "acid", "lbs_proppant", "maximum_treatment_pressure", "maximum_treatment_rate", "details"
-        ]
-        
-        def process_image(image_path):
-            img_text = extract_text(image_path)
-            extracted_data = extract_content(img_text)
-            for key, value in extracted_data.items():
-                if isinstance(value, tuple):
-                    extracted_data[key] = " ".join(value)
-            return extracted_data
+        ]]
         
         results = Parallel(n_jobs=-1, timeout=99999)(
             delayed(process_image)(path) for path in tqdm(image_paths, position=1, leave=False, desc=f"Processing the images of {file_name} file")
