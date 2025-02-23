@@ -6,7 +6,7 @@ from sqlalchemy import update
 import time
 import re
 import string
-from database import WellInfo, SessionLocal
+from test_database import WellStatus, SessionLocal
 from lxml import etree
 
 def separate_and_lowercase(text):
@@ -40,10 +40,10 @@ def construct_well_url(state, county, well_name, api_number):
 
 # Scrape well details from the dynamically generated URL.
 def scrape_well_data(state, county, well_name, api_number):
-    ABBR_TREE = etree.parse("Abbreviations.xml")
+    # ABBR_TREE = etree.parse("Abbreviations.xml")
 
-    state = tokenize_phrase(state, ABBR_TREE)
-    county = tokenize_phrase(county, ABBR_TREE)
+    # state = tokenize_phrase(state, ABBR_TREE)
+    # county = tokenize_phrase(county, ABBR_TREE)
 
     well_url = construct_well_url(state, county, well_name, api_number)
     headers = {
@@ -84,7 +84,7 @@ def scrape_well_data(state, county, well_name, api_number):
 def update_database():
     session = SessionLocal()
     
-    wells = session.query(WellInfo).all()
+    wells = session.query(WellStatus).all()
     
     for well in wells:
         print(f"[INFO] Processing API# {well.API} ({well.well_name})...")
@@ -93,8 +93,8 @@ def update_database():
         
         if well_data:
             stmt = (
-                update(WellInfo)
-                .where(WellInfo.API == well.API)
+                update(WellStatus)
+                .where(WellStatus.API == well.API)
                 .values(
                     well_status=well_data["well_status"],
                     well_type=well_data["well_type"],
