@@ -6,7 +6,7 @@ from sqlalchemy import update
 import time
 import re
 import string
-from test_database import WellNotes, SessionLocal ### subject to change
+from database import WellInfo, SessionLocal
 from lxml import etree
 
 def separate_and_lowercase(text):
@@ -63,9 +63,9 @@ def scrape_well_data(state, county, well_name, api_number):
         well_type = soup.select_one("th:contains('Well Type') + td").text.strip()
         closest_city = soup.select_one("th:contains('Closest City') + td").text.strip()
         barrels_produced_element = soup.select_one("p.block_stat span.dropcap")
-        barrels_produced = barrels_produced_element.text.strip() if barrels_produced_element else 1.00
+        barrels_produced = barrels_produced_element.text.strip() if barrels_produced_element else "0.00"
         mcf_gas_produced_element = soup.select("p.block_stat span.dropcap")
-        mcf_gas_produced = mcf_gas_produced_element[1].text.strip() if len(mcf_gas_produced_element)>1 else 1.00
+        mcf_gas_produced = mcf_gas_produced_element[1].text.strip() if len(mcf_gas_produced_element)>1 else '0.00'
 
         
         return {
@@ -93,8 +93,8 @@ def update_database():
         
         if well_data:
             stmt = (
-                update(WellNotes)
-                .where(WellNotes.API == well.API)
+                update(WellInfo)
+                .where(WellInfo.API == well.API)
                 .values(
                     well_status=well_data["well_status"],
                     well_type=well_data["well_type"],
@@ -108,42 +108,42 @@ def update_database():
             session.commit()
             print(f"[SUCCESS] Updated API# {well.API} ({well.well_name}) in the database.")
         
-        time.sleep(2)  # Prevents getting blocked by the server
+        time.sleep(2)  
     
     session.close()
 
-def update_database():
-    session = SessionLocal()
+# def update_database():
+#     session = SessionLocal()
     
-    try:
-        wells = session.query(WellNotes).all()
+#     try:
+#         wells = session.query(WellNotes).all()
         
-        for well in wells:
-            print(f"[INFO] Processing API# {well.API} ({well.well_name})...")
+#         for well in wells:
+#             print(f"[INFO] Processing API# {well.API} ({well.well_name})...")
 
-            well_data = scrape_well_data(well.state, well.county, well.well_name, well.API)
+#             well_data = scrape_well_data(well.state, well.county, well.well_name, well.API)
             
-            if well_data:
-                try:
-                    well.well_status = well_data.get("well_status")
-                    well.well_type = well_data.get("well_type")
-                    well.closest_city = well_data.get("closest_city")
-                    well.barrels_produced = well_data.get("barrels_produced")
-                    well.mcf_gas_produced = well_data.get("mcf_gas_produced")
+#             if well_data:
+#                 try:
+#                     well.well_status = well_data.get("well_status")
+#                     well.well_type = well_data.get("well_type")
+#                     well.closest_city = well_data.get("closest_city")
+#                     well.barrels_produced = well_data.get("barrels_produced")
+#                     well.mcf_gas_produced = well_data.get("mcf_gas_produced")
 
-                    session.commit()
-                    print(f"[SUCCESS] Updated API# {well.API} ({well.well_name}) in the database.")
-                except SQLAlchemyError as e:
-                    session.rollback()
-                    print(f"[ERROR] Failed to update API# {well.API}: {e}")
+#                     session.commit()
+#                     print(f"[SUCCESS] Updated API# {well.API} ({well.well_name}) in the database.")
+#                 except SQLAlchemyError as e:
+#                     session.rollback()
+#                     print(f"[ERROR] Failed to update API# {well.API}: {e}")
 
-            time.sleep(2)  # Prevents getting blocked by the server
+#             time.sleep(2)  # Prevents getting blocked by the server
 
-    except SQLAlchemyError as e:
-        print(f"[ERROR] Database query failed: {e}")
+#     except SQLAlchemyError as e:
+#         print(f"[ERROR] Database query failed: {e}")
     
-    finally:
-        session.close()
+#     finally:
+#         session.close()
 
 
 if __name__ == "__main__":
