@@ -299,8 +299,32 @@ def select_value(values, keywords=None):
 def data_storage(data):
     db = SessionLocal()
     try:
-        well_info = WellInfo(**data)
-        db.add(well_info)
+        db.add(WellInfo(
+            well_name=data["well_name"],
+            operator=data["operator"],
+            API=data["API"],
+            county=data["county"],
+            state=data["state"],
+            footages=data["footages"],
+            section=data["section"],
+            township=data["township"],
+            range=data["range"],
+            latitude=data["latitude"],
+            longitude=data["longitude"],
+            date_stimulated=data["date_stimulated"],
+            stimulated_formation=data["stimulated_formation"],
+            top=data["top"],
+            bottom=data["bottom"],
+            stimulation_stages=data["stimulation_stages"],
+            volume=data["volume"],
+            volume_unites=data["volume_unites"],
+            type_treatment=data["type_treatment"],
+            acid=data["acid"],
+            lbs_proppant=data["lbs_proppant"],
+            maximum_treatment_pressure=data["maximum_treatment_pressure"],
+            maximum_treatment_rate=data["maximum_treatment_rate"],
+            details=data["details"]
+        ))
         db.commit()
     except Exception as e:
         print(f"Error storing data: {e}")
