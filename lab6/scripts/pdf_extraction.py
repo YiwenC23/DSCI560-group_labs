@@ -1,5 +1,6 @@
 ﻿import os
 import re
+import sys
 import json
 import time
 import cv2 as cv
@@ -336,7 +337,12 @@ def data_storage(data):
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     output_base = os.path.join(BASE_DIR, "../data/raw_data/")
-    input_path = os.path.join(BASE_DIR, "../data/raw_data/DSCI560_Lab6/")
+    
+    if len(sys.argv) > 1:
+        input_path = sys.argv[1]
+    else:
+        input_path = os.path.join(BASE_DIR, "../data/raw_data/DSCI560_Lab6/")
+    
     pdf_to_images(input_path, output_base, dpi=300, thread_count=24)
     
     txt_dir = os.path.join(BASE_DIR, "../data/processed_data/pdf_images_txt/")
