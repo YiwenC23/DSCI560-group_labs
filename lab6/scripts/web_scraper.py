@@ -40,10 +40,10 @@ def construct_well_url(state, county, well_name, api_number):
 
 # Scrape well details from the dynamically generated URL.
 def scrape_well_data(state, county, well_name, api_number):
-    # ABBR_TREE = etree.parse("Abbreviations.xml")
+    ABBR_TREE = etree.parse("Abbreviations.xml")
 
-    # state = tokenize_phrase(state, ABBR_TREE)
-    # county = tokenize_phrase(county, ABBR_TREE)
+    state = tokenize_phrase(state, ABBR_TREE)
+    county = tokenize_phrase(county, ABBR_TREE)
 
     well_url = construct_well_url(state, county, well_name, api_number)
     headers = {
