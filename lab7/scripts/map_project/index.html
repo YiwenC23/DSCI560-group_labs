@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wells Map</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css">
+  <style>
+    html, body, #map {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+    }
+    /* Popup Windows Style */
+    .ol-popup {
+      position: absolute;
+      background-color: white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid #cccccc;
+      min-width: 200px;
+    }
+    .ol-popup:after, .ol-popup:before {
+      top: 100%;
+      border: solid transparent;
+      content: " ";
+      height: 0;
+      width: 0;
+      position: absolute;
+      pointer-events: none;
+    }
+    .ol-popup:after {
+      border-top-color: white;
+      border-width: 10px;
+      left: 48px;
+      margin-left: -10px;
+    }
+    .ol-popup:before {
+      border-top-color: #cccccc;
+      border-width: 11px;
+      left: 48px;
+      margin-left: -11px;
+    }
+    .ol-popup-closer {
+      text-decoration: none;
+      position: absolute;
+      top: 2px;
+      right: 8px;
+      font-weight: bold;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  
+  <div id="popup" class="ol-popup">
+    <a href="#" id="popup-closer" class="ol-popup-closer">×</a>
+    <div id="popup-content"></div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
+  <script>
+    // Create a initial map
+    var map = new ol.Map({
+      target: "map",
+      layers: [
+        new ol.layer.Tile({
+          source: new ol.source.OSM()
+        })
+      ],
+      view: new ol.View({
+        center: ol.proj.fromLonLat([-100, 40]),
+        zoom: 4
+      })
+    });
+    
+    // Create a popup overlay
+    var container = document.getElementById("popup");
+    var content = document.getElementById("popup-content");
+    var closer = document.getElementById("popup-closer");
+    var overlay = new ol.Overlay({
+      element: container,
+      autoPan: {
+        animation: { duration: 250 }
+      }
+    });
+    map.addOverlay(overlay);
+    
+    // Event listener for close button
+    closer.onclick = function() {
+      overlay.setPosition(undefined);
+      closer.blur();
+      return false;
+    };
+    
+    // Fetch well data from backend of the app
+    fetch("http://localhost:3000/wells")
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
+      .then(wellData => {
+        var features = [];
+        wellData.forEach(function(well) {
+          if (well.latitude && well.longitude) {
+            var feature = new ol.Feature({
+              geometry: new ol.geom.Point(ol.proj.fromLonLat([well.longitude, well.latitude])),
+              wellInfo: well
+            });
+            features.push(feature);
+          }
+        });
+        
+        // Vector layer and data source
+        var vectorSource = new ol.source.Vector({
+          features: features
+        });
+        var vectorLayer = new ol.layer.Vector({
+          source: vectorSource,
+          style: new ol.style.Style({
+            image: new ol.style.Circle({
+              radius: 5,
+              fill: new ol.style.Fill({ color: "red" }),
+              stroke: new ol.style.Stroke({ color: "white", width: 1 })
+            })
+          })
+        });
+        map.addLayer(vectorLayer);
+        
+        // Linsten for click event on the map
+        map.on("singleclick", function(evt) {
+          var feature = map.forEachFeatureAtPixel(evt.pixel, function(feature) {
+            return feature;
+          });
+          if (feature) {
+            var wellInfo = feature.get("wellInfo");
+            // Prop up window with well info
+            var infoHtml = "<strong>" + wellInfo.well_name + "</strong><br>" +
+                           "Operator: " + wellInfo.operator + "<br>" +
+                           "API: " + wellInfo.API + "<br>" +
+                           "County: " + wellInfo.county + "<br>" +
+                           "State: " + wellInfo.state + "<br>" +
+                           "Latitude: " + wellInfo.latitude + "<br>" +
+                           "Longitude: " + wellInfo.longitude + "<br>" +
+                           "Well Status: " + wellInfo.well_status + "<br>" +
+                           "Well Type: " + wellInfo.well_type;
+            content.innerHTML = infoHtml;
+            overlay.setPosition(evt.coordinate);
+          } else {
+            overlay.setPosition(undefined);
+          }
+        });
+      })
+      .catch(err => {
+        console.error("Error fetching data:", err);
+        content.innerHTML = "<p>Error loading well data. Please try again later.</p>";
+      });
+  </script>
+</body>
+</html>
