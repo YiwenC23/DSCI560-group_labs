@@ -28,15 +28,40 @@ wells.forEach(well => {
 
     const marker = L.marker([lat, lon]).addTo(map);
     marker.bindPopup(`
-        <b>${well.name}</b><br>
+        <b>${well.well_name}</b><br>
         Operator: ${well.operator}<br>
         API: ${well.api}<br>
         Location: ${well.county}, ${well.state}<br>
-        Latitude: ${well.lat}<br>
-        Longitude: ${well.lon}<br>
+        Latitude: ${well.latitude}<br>
+        Longitude: ${well.longitude}<br>
+        Footages: ${well.footages}<br>
+        Qtr_Qtr: ${well.Qtr_Qtr}<br>
+        Section: ${well.section}<br>
+        Township: ${well.township}<br>
+        Range: ${well.range}<br>
         Well Status: ${well.status}<br>
-        Type: ${well.type}<br>
+        Well Type: ${well.well_type}<br>
+        Closest City: ${well.closest_city}<br>
         Barrels Produced: ${well.barrels}<br>
         MCF Gas Produced: ${well.gas}
     `);
 });
+
+// wells.forEach(well => {
+//   const lat = dmsToDecimal(well.lat);
+//   const lon = dmsToDecimal(well.lon);
+
+//   const marker = L.marker([lat, lon]).addTo(map);
+//   marker.bindPopup(`
+//       <b>${well.name}</b><br>
+//       Operator: ${well.operator}<br>
+//       API: ${well.api}<br>
+//       Location: ${well.county}, ${well.state}<br>
+//       Latitude: ${well.lat}<br>
+//       Longitude: ${well.lon}<br>
+//       Well Status: ${well.status}<br>
+//       Type: ${well.type}<br>
+//       Barrels Produced: ${well.barrels}<br>
+//       MCF Gas Produced: ${well.gas}
+//   `);
+// });
