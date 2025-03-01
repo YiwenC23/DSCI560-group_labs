@@ -3,10 +3,7 @@
 var con = mysql.createConnection({
     host: "localhost",
     user: "root",
-    password: "yiwen960131",
-    authPlugins: {
-        caching_sha2_password: () => require('mysql2/lib/auth/caching_sha2_password')
-    }
+    password: "yiwen",
 });
 
 con.connect(function(err) {
