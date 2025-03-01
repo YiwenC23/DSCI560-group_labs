@@ -7,7 +7,7 @@ const app = express();
 const port = 3000;
 
 
-app.use(express.static("map_project"));
+app.use(express.static("html"));
 
 
 var con = mysql.createConnection({
