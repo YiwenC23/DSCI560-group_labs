@@ -101,7 +101,7 @@ def post_preprocessing(soup):
         
         #? Check if it is the data science post rather than advertisement or something else
         domain = post.get("domain")
-        if domain != "self.datascience":
+        if domain != "self.MachineLearning":
             continue
         
         #? Check if the post is already in the dictionary
@@ -134,15 +134,14 @@ def post_preprocessing(soup):
             "datetime": dt_obj,
             "url": post_url
         }
-    
     return post_dict
 
 
 #* Define the function to retrieve the comments
 def comment_retrieval(base_url, id):
-    reddit_url = base_url.replace("r/datascience/", "")
+#    reddit_url = base_url.replace("r/MachineLearning/", "")
     post_id = id.replace("t3_", "")
-    comment_url = reddit_url + "comments/" + post_id + ".json"
+    comment_url = base_url + "comments/" + post_id + ".json"
     
     headers = {"Accept": "*/*"}
     response = None
@@ -296,13 +295,14 @@ def workflow(post_cnt):
 if __name__ == "__main__":
     CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
     output_path = os.path.join(CURRENT_DIR, "../data/processed_data/")
+    print(output_path)
     post_dict = {}
-    base_url = "https://www.reddit.com/r/datascience/"
+    base_url = "https://www.reddit.com/r/MachineLearning/"
     
     while True:
         post_cnt = input("\n[System] Enter the number of posts to retrieve (skip for all): ")
         if post_cnt == "":
-            post_cnt = 10000
+            post_cnt = 100000
         elif post_cnt.isdigit():
             post_cnt = int(post_cnt)
         else:
