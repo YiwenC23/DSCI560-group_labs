@@ -295,7 +295,7 @@ def workflow(post_cnt):
 
 if __name__ == "__main__":
     CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-    output_path = os.path.join(CURRENT_DIR, "../data/processed_data/")
+    output_path = os.path.join(CURRENT_DIR, "../data/raw_data/")
     print(output_path)
     post_dict = {}
     base_url = "https://www.reddit.com/r/MachineLearning/"
