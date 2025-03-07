@@ -53,6 +53,7 @@ def post_retrieval(post_cnt):
             post_dict = post_preprocessing(soup)
             
             current_cnt = len(post_dict) + 1
+            print(f"\r[INFO] Retrieved Number of Posts: {current_cnt}", end="", flush=True)
             if current_cnt > post_cnt:
                 overflow = current_cnt - post_cnt
                 post_dict = dict(list(post_dict.items())[:-overflow])
