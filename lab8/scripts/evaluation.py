@@ -1,4 +1,13 @@
-﻿
+﻿import random
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.cluster import MiniBatchKMeans
+from sklearn.metrics import silhouette_score
+from sklearn.preprocessing import normalize
+from sklearn.decomposition import PCA
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+seed = random.seed(42)
 
 # Step 3: Cluster the Embeddings Using Cosine Distance
 def perform_clustering(embeddings, max_clusters=10):
@@ -16,7 +25,7 @@ def perform_clustering(embeddings, max_clusters=10):
         clusters = kmeans.fit_predict(embeddings_norm)
         
         # Compute silhouette score using cosine distance
-        score = silhouette_score(embeddings_norm, clusters, metric="cosine")
+        score = silhouette_score(embeddings_norm, clusters, metric="cosine", random_state=seed)
         
         if score > best_score:
             best_score = score
@@ -37,12 +46,11 @@ def extract_keywords(tagged_docs, best_clusters):
     cluster_keywords = {}
     for cluster, messages_in_cluster in cluster_messages.items():
         messages_str = [" ".join(doc.words) if hasattr(doc, "words") else doc for doc in messages_in_cluster]
-        vectorizer = TfidfVectorizer(stop_words='english')
+        vectorizer = TfidfVectorizer(stop_words="english")
         tfidf_matrix = vectorizer.fit_transform(messages_str)
         feature_names = vectorizer.get_feature_names_out()
         tfidf_scores = tfidf_matrix.sum(axis=0).A1
         top_keywords = [feature_names[i] for i in tfidf_scores.argsort()[-5:][::-1]]
-        # print([feature_names[i] for i in tfidf_scores.argsort()[::-1]])
         cluster_keywords[cluster] = top_keywords
 
     return cluster_keywords
@@ -50,7 +58,7 @@ def extract_keywords(tagged_docs, best_clusters):
 # Step 5: Visualize the clusters
 def visualize_clusters(embeddings, best_clusters, cluster_keywords):
     # Reduce dimensionality using PCA
-    pca = PCA(n_components=2)
+    pca = PCA(n_components=2, random_state=seed)
     reduced_embeddings = pca.fit_transform(embeddings)
 
     # Plot clusters
@@ -131,22 +139,4 @@ def evaluate_embeddings(best_clusters, optimal_clusters_number, best_score, embe
     visualize_clusters(embeddings, best_clusters, cluster_keywords)
     
 if __name__ == "__main__":
-    # Use KMeans to do clustering
-    best_clusters_1, best_kmeans_1, optimal_clusters_number_1, best_score_1 = perform_clustering(embeddings_1, max_clusters=min(10, len(embeddings_1)-1))
-    best_clusters_2, best_kmeans_2, optimal_clusters_number_2, best_score_2 = perform_clustering(embeddings_2, max_clusters=min(10, len(embeddings_2)-1))
-    best_clusters_3, best_kmeans_3, optimal_clusters_number_3, best_score_3 = perform_clustering(embeddings_3, max_clusters=min(10, len(embeddings_3)-1))
-
-    # Extract keywords for each cluster
-    cluster_keywords_1 = extract_keywords(posts, best_clusters_1)
-    cluster_keywords_2 = extract_keywords(posts, best_clusters_2)
-    cluster_keywords_3 = extract_keywords(posts, best_clusters_3)
-    
-    # Evaluate the clustering
-    print("Configuration 1")
-    evaluate_embeddings(best_clusters_1, optimal_clusters_number_1, best_score_1, embeddings_1, cluster_keywords_1, best_kmeans_1)
-    print("")
-    print("Configuration 2")
-    evaluate_embeddings(best_clusters_2, optimal_clusters_number_2, best_score_2, embeddings_2, cluster_keywords_2, best_kmeans_2)
-    print("")
-    print("Configuration 3")
-    evaluate_embeddings(best_clusters_3, optimal_clusters_number_3, best_score_3, embeddings_3, cluster_keywords_3, best_kmeans_3)
+    pass
