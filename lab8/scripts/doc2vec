@@ -84,18 +84,6 @@ def visualize_clusters(embeddings, best_clusters, cluster_keywords):
     plt.figure(figsize=(10, 8))
     scatter = plt.scatter(reduced_embeddings[:, 0], reduced_embeddings[:, 1], c=best_clusters, cmap='viridis', alpha=0.8)
 
-    # # Annotate clusters with top keywords
-    # for cluster in cluster_keywords:
-    #     # Get the centroid of the cluster
-    #     cluster_indices = [i for i, c in enumerate(best_clusters) if c == cluster]
-    #     centroid = reduced_embeddings[cluster_indices].mean(axis=0)
-
-    #     # Annotate the centroid with top keywords
-    #     keywords = ", ".join(cluster_keywords[cluster])
-
-    #     # Place the annotation
-    #     plt.text(centroid[0], centroid[1], f"Cluster {cluster}\nKeywords: {keywords}", fontsize=10, ha='left', va='bottom', bbox=dict(facecolor='white', alpha=0.8))
-
     # Set annotation position in bottom-left corner
     x_min, y_min = reduced_embeddings.min(axis=0)
     annotation_x = x_min - 1  # Shift annotations a bit to the left
