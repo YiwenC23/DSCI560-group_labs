@@ -136,7 +136,8 @@ def main():
         tokens = content["tokens"]
         doc_vector = vectorize_post(tokens, word_cluster_mapping, n_clusters=10)
         doc_vectors[post_id] = doc_vector
-
+    
+    return doc_vectors
 
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
