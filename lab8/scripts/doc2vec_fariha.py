@@ -1,4 +1,4 @@
-import os
+﻿import os
 import glob
 import gensim
 import numpy as np
@@ -92,4 +92,3 @@ def algorithm():
 
 if __name__ == "__main__":
     algorithm()
-
