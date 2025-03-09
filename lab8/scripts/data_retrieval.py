@@ -25,7 +25,7 @@ def post_retrieval(post_cnt):
                             "Chrome/116.0.5845.96 Safari/537.36")
     
     options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
+#    options.add_argument("--disable-gpu")
     
     driver = webdriver.Chrome(
         options=options,
@@ -53,7 +53,7 @@ def post_retrieval(post_cnt):
             post_dict = post_preprocessing(soup)
             
             current_cnt = len(post_dict) + 1
-            print(f"\r[INFO] Retrieved Number of Posts: {current_cnt}", end="", flush=True)
+            print(f"\r[INFO] Number of Posts Retrieved: {current_cnt}", end="", flush=True)
             if current_cnt > post_cnt:
                 overflow = current_cnt - post_cnt
                 post_dict = dict(list(post_dict.items())[:-overflow])
@@ -67,7 +67,7 @@ def post_retrieval(post_cnt):
             
             new_height = driver.execute_script("return document.body.scrollHeight")
             if new_height == last_height:
-                print("[INFO] No more posts to retrieve, stopping the process...")
+                print("\n[System] No more posts to retrieve, stopping the process...")
                 break
             
             last_height = new_height
@@ -270,24 +270,34 @@ def store_data(post_id, output_path):
 def workflow(post_cnt):
     global post_dict, base_url
     
-    print("\n[INFO] Retrieving the posts from Reddit...")
+    print("\n[System] Retrieving the posts from Reddit...")
     post_retrieval(post_cnt)
     
+    print("\n[System] Retrieving the comments for each post...")
+    data_cnt = 0
     for post_id in post_dict.keys():
         comments = comment_retrieval(base_url, post_id)
         time.sleep(1)
         comment_list = extract_comment_text(comments)
+        num_comments_extracted = len(comment_list)
+        
         if comment_list is None:
+            post_dict[post_id]["num_comments_extracted"] = 0
             continue
+        else:
+            post_dict[post_id]["num_comments_extracted"] = num_comments_extracted
         
         post_dict[post_id]["comments"] = dict(enumerate(comment_list))
-    print(f"[INFO] Successfully retrieved {len(post_dict)} posts!")
+        data_cnt += 1
+        print(f"\r[INFO] Number of Posts Processed: {data_cnt} | Current Post ID: {post_id} | Number of Comments in Record: {post_dict[post_id]['comment_count']} | Number of Comments Extracted: {num_comments_extracted}", end="", flush=True)
     
-    print("\n[INFO] Preprocessing the post data...")
+    print(f"[INFO] Successfully retrieved all comments for{len(post_dict)} posts!")
+    
+    print("\n[System] Preprocessing the post data...")
     comment_preprocessing()
     print("[INFO] Successfully preprocessed the post data!")
     
-    print("\n[INFO] Storing the data into txt file...")
+    print("\n[System] Storing the data into txt file...")
     for post_id in post_dict.keys():
         store_data(post_id, output_path)
     print("[INFO] Successfully stored the data into txt file!")
@@ -296,7 +306,7 @@ def workflow(post_cnt):
 if __name__ == "__main__":
     CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
     output_path = os.path.join(CURRENT_DIR, "../data/raw_data/")
-    print(output_path)
+    
     post_dict = {}
     base_url = "https://www.reddit.com/r/MachineLearning/"
     

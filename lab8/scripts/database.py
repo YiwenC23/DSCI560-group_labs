@@ -11,6 +11,7 @@ class PostInfo(Base):
     title = sql.Column(sql.String(255))
     author_id = sql.Column(sql.String(255))
     comment_count = sql.Column(sql.Integer)
+    num_comments_extracted = sql.Column(sql.Integer)
     datetime = sql.Column(sql.DateTime)
     url = sql.Column(sql.String(255))
     file_path = sql.Column(sql.String(255))
@@ -25,9 +26,13 @@ class PostInfo(Base):
 def connect_db():
     while True:
         #? Get the database credentials from the user
-        db_username = input("[System] Please enter the username for the database: ")
-        db_password = input("[System] Please enter the password for the database: ")
-        db_name = input("[System] Please enter the database name: ")
+        # db_username = input("[System] Please enter the username for the database: ")
+        # db_password = input("[System] Please enter the password for the database: ")
+        # db_name = input("[System] Please enter the database name: ")
+        
+        db_username = "yiwen"
+        db_password = "yiwen"
+        db_name = "lab8"
         
         conn_url = f"mysql+pymysql://{db_username}:{db_password}@localhost/{db_name}"
     
@@ -47,7 +52,7 @@ def connect_db():
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             
-            print("\n[INFO] Successfully connected to the database!")
+            print("[INFO] Successfully connected to the database!")
             return engine
         
         except Exception as e:
