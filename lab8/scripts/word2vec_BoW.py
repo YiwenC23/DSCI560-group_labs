@@ -1,6 +1,5 @@
 ﻿import os
 import re
-import sys
 import spacy
 import random
 import warnings
@@ -113,7 +112,7 @@ def vectorize_post(tokens, word_cluster_mapping, n_clusters):
     if total_words > 0:
         histogram = histogram / total_words
     
-    return histogram
+    return histogram, all_words
 
 
 #* Main function
@@ -128,34 +127,37 @@ def main():
     words, embeddings = get_embeddings(CBOW_model)
     
     #` Step 4: Perform clusterings with three different number of clusters
-    cluster_labels_1 = cluster_embeddings(embeddings, n_clusters=100)
-    cluster_labels_2 = cluster_embeddings(embeddings, n_clusters=200)
-    cluster_labels_3 = cluster_embeddings(embeddings, n_clusters=300)
+    cluster_labels_1 = cluster_embeddings(embeddings, n_clusters=50)
+    cluster_labels_2 = cluster_embeddings(embeddings, n_clusters=100)
+    cluster_labels_3 = cluster_embeddings(embeddings, n_clusters=200)
     
     word_cluster_mapping_1 = dict(zip(words, cluster_labels_1))
     word_cluster_mapping_2 = dict(zip(words, cluster_labels_2))
     word_cluster_mapping_3 = dict(zip(words, cluster_labels_3))
     
     #` Step 5: Vectorize the posts with three different number of clusters
+    word2vec_BoW_tagged_doc = {}
     docVec_dict = {"dim1": {}, "dim2": {}, "dim3": {}}
     
     #? Get the vectorized posts for three different dimensions
     for post_id, content in data_dict.items():
         tokens = content["tokens"]
-        doc_vectors_1 = vectorize_post(tokens, word_cluster_mapping_1, n_clusters=50)
-        doc_vectors_2 = vectorize_post(tokens, word_cluster_mapping_2, n_clusters=100)
-        doc_vectors_3 = vectorize_post(tokens, word_cluster_mapping_3, n_clusters=200)
+        doc_vectors_1, words_list = vectorize_post(tokens, word_cluster_mapping_1, n_clusters=50)
+        doc_vectors_2, _ = vectorize_post(tokens, word_cluster_mapping_2, n_clusters=100)
+        doc_vectors_3, _ = vectorize_post(tokens, word_cluster_mapping_3, n_clusters=200)
         
         docVec_dict["dim1"][post_id] = doc_vectors_1
         docVec_dict["dim2"][post_id] = doc_vectors_2
         docVec_dict["dim3"][post_id] = doc_vectors_3
     
-    return docVec_dict
+        word2vec_BoW_tagged_doc[post_id] = " ".join(words_list)
+    
+    return docVec_dict, word2vec_BoW_tagged_doc
 
 
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    input_dir = os.path.join(BASE_DIR, "../data/raw/raw_data/")
+    input_dir = os.path.join(BASE_DIR, "../data/raw_data/")
     
     stop_words = set(stopwords.words("english"))
     nlp = spacy.load("en_core_web_sm")
