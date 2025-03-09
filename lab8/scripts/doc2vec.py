@@ -1,19 +1,13 @@
 import os
 import re
 import spacy
+import json
+import numpy as np
 from nltk.corpus import stopwords
 from gensim.models import Doc2Vec
 from gensim.utils import simple_preprocess
 from gensim.models.doc2vec import TaggedDocument
-from sklearn.metrics import silhouette_score
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
-from sklearn.feature_extraction.text import TfidfVectorizer
-# from database import SessionLocal, PostInfo
 from sqlalchemy import select
-from sklearn.cluster import MiniBatchKMeans
-from sklearn.preprocessing import normalize
 
 # Step 0: Pre-process
 def pre_process():
@@ -50,9 +44,9 @@ def train_doc2vec(posts, vector_size, min_count, epochs):
 
 # Step 2: Generate embeddings for each document
 def generate_embeddings(model, posts):
+    # return [embedding.tolist() for embedding in [model.infer_vector(doc.words) for doc in posts]]
     embeddings = [model.infer_vector(doc.words) for doc in posts]
     return embeddings
-
 
 def algorithm():
     # Preprocess data
@@ -75,12 +69,12 @@ def algorithm():
         "config3": {post.tags[0]: embedding for post, embedding in zip(posts, embeddings_3)}
     }
 
-    # Uncomment the following to exhibit sample vector outputs
-    # for config, embeddings in embeddings_dict.items():
-    #     print(f"{config}:")
-    #     first_10_embeddings = {post_id: embeddings[post_id] for post_id in list(embeddings.keys())[:3]}
-    #     print(first_10_embeddings)
-    #     print("\n")
+    # Save as JSON
+    # output_path = "doc2vec_embeddings.json"
+    # with open(output_path, "w", encoding="utf-8") as f:
+    #     json.dump(embeddings_dict, f, indent=4)
+
+    # print(f"Embeddings saved to {output_path}")
     
     return embeddings_dict
 
