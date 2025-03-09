@@ -9,8 +9,16 @@ from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize, word_tokenize
 from sklearn.cluster import KMeans
 
-seed = random.seed(42)
+seed_val = 42
+random.seed(seed_val)
+np.random.seed(seed_val)
 warnings.filterwarnings("ignore")
+
+stop_words = set(stopwords.words("english"))
+nlp = spacy.load("en_core_web_sm")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+input_dir = os.path.join(BASE_DIR, "../data/raw_data/")
 
 
 #* Function to preprocess the text
@@ -67,8 +75,9 @@ def train_CBOW_model(data_dict):
     #? Initialize the parameters
     kwargs = {
         "min_count": 1,
-        "vector_size": 100,
-        "window": 5,
+        "vector_size": 10,
+        "window": 3,
+        "epochs": 20
     }
     
     corpus = []
@@ -89,7 +98,7 @@ def get_embeddings(model):
 
 #* Function to perform clustering
 def cluster_embeddings(embeddings, n_clusters):
-    kmeans = KMeans(n_clusters=n_clusters, random_state=seed)
+    kmeans = KMeans(n_clusters=n_clusters, n_init=50, random_state=seed_val)
     kmeans.fit(embeddings)
     return kmeans.labels_
 
@@ -127,9 +136,9 @@ def main():
     words, embeddings = get_embeddings(CBOW_model)
     
     #` Step 4: Perform clusterings with three different number of clusters
-    cluster_labels_1 = cluster_embeddings(embeddings, n_clusters=50)
-    cluster_labels_2 = cluster_embeddings(embeddings, n_clusters=100)
-    cluster_labels_3 = cluster_embeddings(embeddings, n_clusters=200)
+    cluster_labels_1 = cluster_embeddings(embeddings, n_clusters=5)
+    cluster_labels_2 = cluster_embeddings(embeddings, n_clusters=10)
+    cluster_labels_3 = cluster_embeddings(embeddings, n_clusters=20)
     
     word_cluster_mapping_1 = dict(zip(words, cluster_labels_1))
     word_cluster_mapping_2 = dict(zip(words, cluster_labels_2))
@@ -142,9 +151,9 @@ def main():
     #? Get the vectorized posts for three different dimensions
     for post_id, content in data_dict.items():
         tokens = content["tokens"]
-        doc_vectors_1, words_list = vectorize_post(tokens, word_cluster_mapping_1, n_clusters=50)
-        doc_vectors_2, _ = vectorize_post(tokens, word_cluster_mapping_2, n_clusters=100)
-        doc_vectors_3, _ = vectorize_post(tokens, word_cluster_mapping_3, n_clusters=200)
+        doc_vectors_1, words_list = vectorize_post(tokens, word_cluster_mapping_1, n_clusters=5)
+        doc_vectors_2, _ = vectorize_post(tokens, word_cluster_mapping_2, n_clusters=10)
+        doc_vectors_3, _ = vectorize_post(tokens, word_cluster_mapping_3, n_clusters=20)
         
         docVec_dict["dim1"][post_id] = doc_vectors_1
         docVec_dict["dim2"][post_id] = doc_vectors_2
@@ -153,13 +162,3 @@ def main():
         word2vec_BoW_tagged_doc[post_id] = " ".join(words_list)
     
     return docVec_dict, word2vec_BoW_tagged_doc
-
-
-if __name__ == "__main__":
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    input_dir = os.path.join(BASE_DIR, "../data/raw_data/")
-    
-    stop_words = set(stopwords.words("english"))
-    nlp = spacy.load("en_core_web_sm")
-    
-    main()
