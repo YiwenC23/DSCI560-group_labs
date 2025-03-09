@@ -10,7 +10,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize, word_tokenize
 from sklearn.cluster import KMeans
 
-random.seed(42)
+seed = random.seed(42)
 warnings.filterwarnings("ignore")
 
 
@@ -45,6 +45,7 @@ def tokenize_text(text):
 
 #* Function to load the data and preprocess it
 def data_engineering(input_dir):
+    data_dict = {}
     files = os.listdir(input_dir)
     for file in files:
         file_id = file.split("_")[1].split(".")[0]
@@ -88,8 +89,8 @@ def get_embeddings(model):
 
 
 #* Function to perform clustering
-def cluster_embeddings(embeddings, n_clusters=10):
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+def cluster_embeddings(embeddings, n_clusters):
+    kmeans = KMeans(n_clusters=n_clusters, random_state=seed)
     kmeans.fit(embeddings)
     return kmeans.labels_
 
@@ -126,18 +127,31 @@ def main():
     #` Step 3: Get the word embeddings
     words, embeddings = get_embeddings(CBOW_model)
     
-    #` Step 4: Perform clustering 
-    cluster_labels = cluster_embeddings(embeddings, n_clusters=10)
+    #` Step 4: Perform clusterings with three different number of clusters
+    cluster_labels_1 = cluster_embeddings(embeddings, n_clusters=100)
+    cluster_labels_2 = cluster_embeddings(embeddings, n_clusters=200)
+    cluster_labels_3 = cluster_embeddings(embeddings, n_clusters=300)
     
-    word_cluster_mapping = dict(zip(words, cluster_labels))
+    word_cluster_mapping_1 = dict(zip(words, cluster_labels_1))
+    word_cluster_mapping_2 = dict(zip(words, cluster_labels_2))
+    word_cluster_mapping_3 = dict(zip(words, cluster_labels_3))
     
-    #` Step 5: Vectorize the posts
+    #` Step 5: Vectorize the posts with three different number of clusters
+    docVec_dict = {"dim1": {}, "dim2": {}, "dim3": {}}
+    
+    #? Get the vectorized posts for three different dimensions
     for post_id, content in data_dict.items():
         tokens = content["tokens"]
-        doc_vector = vectorize_post(tokens, word_cluster_mapping, n_clusters=10)
-        doc_vectors[post_id] = doc_vector
+        doc_vectors_1 = vectorize_post(tokens, word_cluster_mapping_1, n_clusters=50)
+        doc_vectors_2 = vectorize_post(tokens, word_cluster_mapping_2, n_clusters=100)
+        doc_vectors_3 = vectorize_post(tokens, word_cluster_mapping_3, n_clusters=200)
+        
+        docVec_dict["dim1"][post_id] = doc_vectors_1
+        docVec_dict["dim2"][post_id] = doc_vectors_2
+        docVec_dict["dim3"][post_id] = doc_vectors_3
     
-    return doc_vectors
+    return docVec_dict
+
 
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -146,6 +160,4 @@ if __name__ == "__main__":
     stop_words = set(stopwords.words("english"))
     nlp = spacy.load("en_core_web_sm")
     
-    data_dict = {}
-    doc_vectors = {}
     main()
