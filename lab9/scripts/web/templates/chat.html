@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Chat</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+<body>
+    <div class="container chat-container">
+        <header class="chat-header">
+            <h1>PDF Chat</h1>
+            <div class="pdf-info">
+                <p>Analyzing {{ pdfs|length }} PDF(s)</p>
+                <button id="newAnalysisBtn" class="new-analysis-button">New Analysis</button>
+            </div>
+        </header>
+        
+        <main class="chat-main">
+            <div id="chatMessages" class="chat-messages">
+                <div class="message ai-message">
+                    <div class="message-content">
+                        <p>Hello! I've analyzed your PDFs. Ask me anything about them.</p>
+                    </div>
+                </div>
+                <!-- Chat messages will be populated here -->
+            </div>
+            
+            <form id="messageForm" class="message-form">
+                <input type="text" id="userMessage" placeholder="Ask a question about your PDFs..." required>
+                <button type="submit">Send</button>
+            </form>
+        </main>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+
+</body>
+</html>

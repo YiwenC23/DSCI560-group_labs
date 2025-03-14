@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+ 
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PDF Analyzer</h1>
+        </header>
+        
+        <main>
+            <section class="upload-section">
+                <h2>1. Upload PDFs</h2>
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="file-upload">
+                        <input type="file" id="pdfFiles" name="pdfFiles" accept=".pdf" multiple>
+                        <label for="pdfFiles" class="upload-button">Select PDFs</label>
+                    </div>
+                    <button type="submit" class="submit-button">Upload</button>
+                </form>
+                
+                <div id="uploadStatus" class="upload-status"></div>
+                <div id="fileList" class="file-list"></div>
+            </section>
+            
+            <section class="analyze-section">
+                <h2>2. Analyze PDFs</h2>
+                <button id="analyzeButton" class="analyze-button" disabled>Analyze PDFs</button>
+                <div id="analyzeStatus" class="analyze-status"></div>
+            </section>
+        </main>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</body>
+</html>
