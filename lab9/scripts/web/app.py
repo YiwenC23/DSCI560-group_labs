@@ -1,8 +1,17 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_from_directory
 import os
+import numpy as np
+import faiss
+from openai import OpenAI
 from werkzeug.utils import secure_filename
 import uuid
-from pdf_processor import get_pdf_text, get_text_chunks, get_vectorstore, get_conversation_chain
+from dotenv import load_dotenv
+from chatbox_copy import extract_pdf_text, chunk_text, embed_text, create_vector_store, conversation_chain
+
+
+# Initialize OpenAI client
+load_dotenv()
+client = OpenAI()
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -10,6 +19,9 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Generate a random secret key
 # Define upload folder for PDFs
 app.config['UPLOAD_FOLDER'] = 'uploads'
+# Add vector store and text chunks as application variables
+app.config['VECTOR_STORE'] = None
+app.config['TEXT_CHUNKS'] = None
 
 # Create upload directory if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -26,10 +38,8 @@ def initialize_session():
         session['chat_history'] = []  # Store chat messages
     if 'pdfs' not in session:
         session['pdfs'] = []  # Store information about uploaded PDFs
-    if 'vectorstore' not in session:
-        session['vectorstore'] = None  # Flag to indicate if vectorstore is created
-    if 'conversation_initialized' not in session:
-        session['conversation_initialized'] = False  # Flag for conversation state
+    if 'vector_store_created' not in session:
+        session['vector_store_created'] = False  # Flag to indicate if vectorstore is created
 
 # Route for the main page (PDF upload interface)
 @app.route('/')
@@ -100,25 +110,26 @@ def analyze():
         pdf_paths = [pdf['path'] for pdf in session.get('pdfs', [])]
         
         # Step 1: Extract text content from all PDFs
-        raw_text = get_pdf_text(pdf_paths)
+        raw_text = extract_pdf_text(pdf_paths)
         
-        # Step 2: Split the text into manageable chunks for processing
-        text_chunks = get_text_chunks(raw_text)
+        # Step 2: Split the text into manageable chunks
+        text_chunks = chunk_text(raw_text)
         
-        # Step 3: Create vector embeddings from text chunks
-        vectorstore = get_vectorstore(text_chunks)
+        # Step 3: Generate embeddings for text chunks
+        embeddings = embed_text(text_chunks)
         
-        # Mark in the session that processing is complete
-        # Note: We only store flags in the session since complex objects like vectorstores can't be serialized in the session
-        session['vectorstore'] = True
-        session['conversation_initialized'] = True
+        # Step 4: Create vector store and store it in the app config
+        vector_store = create_vector_store(embeddings)
+        app.config['VECTOR_STORE'] = vector_store
+        app.config['TEXT_CHUNKS'] = text_chunks
+        
+        # Store a flag in the session that processing is complete
+        session['vector_store_created'] = True
         session.modified = True
         
     except Exception as e:
-        # Log any errors during processing but continue to chat page
         print(f"Error processing PDFs: {str(e)}")
-        # We still render the chat page even if analysis fails, but the error will be communicated to the user when they try to chat
-    
+        
     # Render the chat interface with the list of processed PDFs
     return render_template('chat.html', pdfs=session.get('pdfs', []))
 
@@ -133,46 +144,63 @@ def send_message():
     if not user_message:
         return jsonify({'error': 'No message provided'}), 400
     
-    # Add user message to chat history
-    chat_history = session.get('chat_history', [])
-    chat_history.append({
+    # Add user message to chat history for display
+    display_chat_history = session.get('chat_history', [])
+    display_chat_history.append({
         'sender': 'user',
         'message': user_message
     })
     
-    # Generate AI response if PDFs have been processed
-    if session.get('conversation_initialized'):
+    # Prepare chat history for the conversation chain
+    # This converts the chat history from our format to the format expected by conversation_chain
+    chain_chat_history = []
+    for msg in display_chat_history:
+        if msg['sender'] == 'user':
+            chain_chat_history.append(f"User: {msg['message']}")
+        else:
+            chain_chat_history.append(f"Bot: {msg['message']}")
+    
+    # Generate AI response if vector store has been created
+    if session.get('vector_store_created'):
         try:
-            # Get conversation chain instance
-            # This retrieves the previously created chain from the module
-            conversation = get_conversation_chain()
+            # Get vector store and text chunks from app config
+            vector_store = app.config['VECTOR_STORE']
+            text_chunks = app.config['TEXT_CHUNKS']
             
-            # Process user message through the conversation chain
-            response = conversation({'question': user_message})
-            ai_response = response['answer']
+            # Create a conversation chain for this request
+            conversation = conversation_chain(
+                query=user_message,
+                text_chunks=text_chunks,
+                vector_store=vector_store,
+                chat_history=chain_chat_history
+            )
+            
+            # Get response from conversation
+            bot_response = conversation
+            
         except Exception as e:
             # Handle any errors during processing
             print(f"Error using conversation chain: {str(e)}")
-            ai_response = f"I encountered an error processing your question. Please try again."
+            bot_response = f"I encountered an error processing your question. Please try again."
     else:
         # Inform user they need to upload and process PDFs first
-        ai_response = "Please upload and process PDF documents first before asking questions."
+        bot_response = "Please upload and process PDF documents first before asking questions."
     
     # Add AI response to chat history
-    chat_history.append({
-        'sender': 'ai',
-        'message': ai_response
+    display_chat_history.append({
+        'sender': 'bot',
+        'message': bot_response
     })
     
     # Update session with new chat history
-    session['chat_history'] = chat_history
+    session['chat_history'] = display_chat_history
     session.modified = True
     
     # Return the AI response and updated chat history
     return jsonify({
         'success': True,
-        'response': ai_response,
-        'chat_history': chat_history
+        'response': bot_response,
+        'chat_history': display_chat_history
     })
 
 # API endpoint to retrieve chat history
@@ -183,9 +211,15 @@ def get_chat_history():
 # Route to reset the session and start over
 @app.route('/reset')
 def reset():
-    # Clear PDF data and chat history from session
+    # Clear session data
     session.pop('pdfs', None)
     session.pop('chat_history', None)
+    session.pop('vector_store_created', None)
+    
+    # Clear app config data
+    app.config['VECTOR_STORE'] = None
+    app.config['TEXT_CHUNKS'] = None
+    
     # Redirect to upload page
     return redirect(url_for('index'))
 
