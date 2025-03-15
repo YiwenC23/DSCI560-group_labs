@@ -7,7 +7,7 @@ from openai import OpenAI
 from PyPDF2 import PdfReader
 from dotenv import load_dotenv
 from langchain.text_splitter import CharacterTextSplitter
-from lab9.scripts.htmlTemplates import css, bot_template, user_template
+from htmlTemplates import css, bot_template, user_template
 
 
 #* Get the API key from the environment variable, ask for input if not found
@@ -75,7 +75,7 @@ def conversation_chain(query, text_chunks, vector_store, chat_history):
     prompt = f"{history_text}\nContext: {context_chunks}\nUser: {query}\nBot:"
     
     #? Get answer from the LLM
-    response = client.completions.create(prompt=prompt, max_tokens=150)
+    response = client.completions.create(prompt=prompt, model="davinci-002")
     answer = response.choices[0].text.strip()
     
     #? Append bot answer to chat history
