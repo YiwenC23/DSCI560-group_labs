@@ -10,16 +10,16 @@
 <body>
     <div class="container">
         <header>
-            <h1>PDF Analyzer</h1>
+            <h1>Welcome to Question-and-Answer (Q&A) Chatbot</h1>
         </header>
         
         <main>
             <section class="upload-section">
-                <h2>1. Upload PDFs</h2>
+                <h2>1. Upload the PDF(s) that you want to analysis</h2>
                 <form id="uploadForm" enctype="multipart/form-data">
                     <div class="file-upload">
                         <input type="file" id="pdfFiles" name="pdfFiles" accept=".pdf" multiple>
-                        <label for="pdfFiles" class="upload-button">Select PDFs</label>
+                        <label for="pdfFiles" class="upload-button">Select PDF(s)</label>
                     </div>
                     <button type="submit" class="submit-button">Upload</button>
                 </form>
@@ -29,7 +29,7 @@
             </section>
             
             <section class="analyze-section">
-                <h2>2. Analyze PDFs</h2>
+                <h2>2. Analyze uploaded PDF(s) and communicate with the Chatbot! </h2>
                 <button id="analyzeButton" class="analyze-button" disabled>Analyze PDFs</button>
                 <div id="analyzeStatus" class="analyze-status"></div>
             </section>
