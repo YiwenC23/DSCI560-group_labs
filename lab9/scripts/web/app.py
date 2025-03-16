@@ -6,7 +6,7 @@ from openai import OpenAI
 from werkzeug.utils import secure_filename
 import uuid
 from dotenv import load_dotenv
-from chatbox_copy import extract_pdf_text, chunk_text, embed_text, create_vector_store, conversation_chain
+from chatbox import extract_pdf_text, chunk_text, embed_text, create_vector_store, conversation_chain
 
 
 # Initialize OpenAI client
