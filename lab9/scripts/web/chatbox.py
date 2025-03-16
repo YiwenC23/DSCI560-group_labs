@@ -89,7 +89,7 @@ def conversation_chain(query, text_chunks, vector_store, chat_history, model):
     
     if model == "gpt-4o-mini":
         ChatResponse = client.chat.completions.create(
-            model = llm[0],
+            model = model,
             messages = [
                 {"role": "system", "content": "You are a helpful assistant that can answer questions about the context provided."},
                 {"role": "user", "content": prompt}
@@ -98,7 +98,7 @@ def conversation_chain(query, text_chunks, vector_store, chat_history, model):
         answer = ChatResponse.choices[0].message.content.strip()
     elif model == "gemma3:27b-it-q4_K_M":
         ChatResponse = ollama.chat(
-            model = llm[1],
+            model = model,
             messages = [
                 {"role": "user", "content": prompt}
             ]
