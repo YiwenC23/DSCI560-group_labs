@@ -1,19 +1,22 @@
 ﻿import os
 import faiss
+import ollama
 import getpass
 import numpy as np
-import streamlit as st
 from openai import OpenAI
 from PyPDF2 import PdfReader
 from dotenv import load_dotenv
 from langchain.text_splitter import CharacterTextSplitter
-#from htmlTemplates import css, bot_template, user_template
 
 
 #* Get the API key from the environment variable, ask for input if not found
 if not os.environ.get("OPENAI_API_KEY"):
     os.environ["OPENAI_API_KEY"] = getpass.getpass("OpenAI API Key: ")
 client = OpenAI()
+
+
+llm = ["gpt-4o-mini", "gemma3:27b-it-q4_K_M" ]
+emb_models = ["text-embedding-3-small", "nomic-embed-text"]
 
 
 def extract_pdf_text(pdf_docs):
@@ -38,12 +41,20 @@ def chunk_text(text):
     return chunks
 
 
-def embed_text(text_chunks, model = "text-embedding-3-large"):
-    response = client.embeddings.create(
-        input = text_chunks,
-        model = model
-    )
-    embeddings = [item.embedding for item in response.data]
+def embed_text(text_chunks, model):
+    if model == "text-embedding-3-small":
+        response = client.embeddings.create(
+            input = text_chunks,
+            model = model
+        )
+        embeddings = [item.embedding for item in response.data]
+    elif model == "nomic-embed-text":
+        embeddings = ollama.embed(
+            model = model,
+            input = text_chunks
+        ).embeddings
+    else:
+        raise ValueError(f"Model {model} not supported")
     
     return embeddings
 
@@ -57,12 +68,12 @@ def create_vector_store(embeddings):
     return vector_store
 
 
-def conversation_chain(query, text_chunks, vector_store, chat_history):
+def conversation_chain(query, text_chunks, vector_store, chat_history, model):
     #? # Append user question to chat history
     chat_history.append(f"User: {query}")
     
     #? # Compute embedding for the query
-    query_embedding = embed_text([query])[0]
+    query_embedding = embed_text([query], emb_models[1])[0]
     query_embedding_array = np.array([query_embedding]).astype("float32")
     
     #? # Retrieve context from the vector store
@@ -75,14 +86,26 @@ def conversation_chain(query, text_chunks, vector_store, chat_history):
     prompt = f"{history_text}\nContext: {context_chunks}\nUser: {query}\nBot:"
     
     #? Get answer from the LLM
-    response = client.chat.completions.create(
-        model = "gpt-4o",
-        messages = [
-            {"role": "system", "content": "You are a helpful assistant that can answer questions about the context provided."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    answer = response.choices[0].message.content.strip()
+    
+    if model == "gpt-4o-mini":
+        ChatResponse = client.chat.completions.create(
+            model = llm[0],
+            messages = [
+                {"role": "system", "content": "You are a helpful assistant that can answer questions about the context provided."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        answer = ChatResponse.choices[0].message.content.strip()
+    elif model == "gemma3:27b-it-q4_K_M":
+        ChatResponse = ollama.chat(
+            model = llm[1],
+            messages = [
+                {"role": "user", "content": prompt}
+            ]
+        )
+        answer = ChatResponse.message.content.strip()
+    else:
+        raise ValueError(f"Model {model} not supported")
     
     #? Append bot answer to chat history
     chat_history.append(f"Bot: {answer}")
