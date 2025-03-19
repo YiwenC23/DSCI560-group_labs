@@ -6,14 +6,14 @@ from openai import OpenAI
 from werkzeug.utils import secure_filename
 import uuid
 from dotenv import load_dotenv
-from chatbox import extract_pdf_text, chunk_text, embed_text, create_vector_store, conversation_chain
+from chatbot import extract_pdf_text, chunk_text, embed_text, create_vector_store, conversation_chain
 
 
 # Initialize OpenAI client
 load_dotenv()
 client = OpenAI()
 
-llm = ["gpt-4o-mini", "gemma3:27b-it-q4_K_M" ]
+llm_models = ["gpt-4o-mini", "gemma3:27b-it-q4_K_M" ]
 emb_models = ["text-embedding-3-small", "nomic-embed-text"]
 
 # Initialize Flask application
@@ -119,7 +119,7 @@ def analyze():
         text_chunks = chunk_text(raw_text)
         
         # Step 3: Generate embeddings for text chunks
-        embeddings = embed_text(text_chunks, emb_models[1])
+        embeddings = embed_text(text_chunks, emb_models[0])
         
         # Step 4: Create vector store and store it in the app config
         vector_store = create_vector_store(embeddings)
@@ -176,7 +176,8 @@ def send_message():
                 text_chunks=text_chunks,
                 vector_store=vector_store,
                 chat_history=chain_chat_history,
-                model = llm[1]
+                emb_model=emb_models[0],
+                llm_model=llm_models[0]
             )
             
             # Get response from conversation
