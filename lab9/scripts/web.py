@@ -1,8 +1,12 @@
-﻿import ollama
+﻿import os
+import sys
+import time
+import ollama
 import numpy as np
+import pandas as pd
 import streamlit as st
 
-
+from vectorDB import VectorDB
 from vector_store import (
     extract_pdf_text,
     chunk_text,
@@ -11,8 +15,27 @@ from vector_store import (
     client
 )
 
+# BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+# DB_DIR = os.path.join(BASE_PATH, "data/VectorDB")
 
-st.set_page_config(page_title="MiniMind", page_icon=":robot_face:", initial_sidebar_state="expanded")
+# def connect_vectorDB():
+#     embedding_dim = 745
+#     index_file = os.path.join(DB_DIR, "index.faiss")
+#     mapping_file = os.path.join(DB_DIR, "mapping.json")
+    
+#     if os.path.exists(index_file) and os.path.exists(mapping_file):
+#         db = VectorDB.load(DB_DIR, embedding_dim)
+#         print("\nSuccessfully connected to the VectorDB.")
+#         return db
+#     else:
+#         db = VectorDB(embedding_dim)
+#         print("\nThe VectorDB has been successfully initialized.")
+#         return db
+
+# vector_db = connect_vectorDB()
+
+
+st.set_page_config(page_title="MiniChat", page_icon=":robot_face:", initial_sidebar_state="expanded")
 
 
 st.markdown("""
@@ -75,8 +98,8 @@ st.markdown("""
             border-radius: 6px !important;             /* Set the border radius */
             height: auto !important;                   /* Set the height to auto */
             width: auto !important;                    /* Set the width to auto */
-            padding: 6px 12px !important;              /* Set the padding to 6px and 12px */
-            font-size: 16px !important;                /* Set the font size */
+            padding: 8px 16px !important;              /* Set the padding to 6px and 12px */
+            font-size: 14px !important;                /* Set the font size */
             color: #fff !important;                    /* Set the text color to white */
             cursor: pointer !important;                /* Change the cursor to a pointer on hover */
             transition: all 0.2s ease !important;      /* Add a smooth transition for hover effects */
@@ -136,29 +159,49 @@ def init_chat_history():
     return st.session_state.messages
 
 
+#* Define the sidebar components
+st.markdown("""
+        <style>
+            [data-testid='stSidebarCollapseButton'] {
+                display: inline !important;
+                padding: 8px 16px !important;
+            }
+            .stFileUploader {
+                font-size: 14px !important;
+            }
+        </style>
+            """, unsafe_allow_html=True)
 
-st.sidebar.header("Model Settings")
-embedding_model = st.sidebar.selectbox("Embedding Models", ["nomic-embed-text", "text-embedding-3-small"], index = 1)
-llm_model = st.sidebar.selectbox("LLM Models", ["gemma3:27b-it-q4_K_M", "gpt-4o-mini"], index = 1)
 
+st.sidebar.header("Model Settings", divider="gray")
+embedding_model = st.sidebar.selectbox("Choose a Embedding Model:", ["nomic-embed-text", "nomic-embed-text-v1.5", "text-embedding-3-small"], index = 0)
+llm_model = st.sidebar.selectbox("Choose a LLM Model:", ["gemma3:27b-it-q4_K_M", "gpt-4o-mini"], index = 1)
 
-st.sidebar.header("Your Documents")
-pdf_docs = st.sidebar.file_uploader("Upload your PDFs and click Process", accept_multiple_files=True)
+# st.sidebar.divider()
+
+st.sidebar.header("My Documents", divider="gray")
+pdf_docs = st.sidebar.file_uploader("*Upload your PDFs", accept_multiple_files=True)
+
 if st.sidebar.button("Process"):
     if not pdf_docs:
         st.sidebar.warning("Please upload your PDFs first!")
     else:
-        with st.spinner("Processing"):
-            raw_text = extract_pdf_text(pdf_docs)
-            text_chunks = chunk_text(raw_text)
-            embeddings = embed_text(text_chunks, embedding_model)
-            vector_store = create_vector_store(embeddings)
-            st.session_state.text_chunks = text_chunks
-            st.session_state.vector_store = vector_store
-            st.success("Processing complete!")
+        with st.sidebar:
+            sideSP_container = st.empty()
+            with sideSP_container.container():
+                with st.spinner("Processing the uploaded PDFs..."):
+                    raw_text = extract_pdf_text(pdf_docs)
+                    text_chunks = chunk_text(raw_text)
+                    embeddings = embed_text(text_chunks, embedding_model)
+                    vector_store = create_vector_store(embeddings)
+                    st.session_state.text_chunks = text_chunks
+                    st.session_state.vector_store = vector_store
+                st.success("Processing complete!")
+                time.sleep(2)
+                sideSP_container.empty()
 
 
-slogan = "Hi, I'm MiniMind"
+slogan = "Hi, I'm MiniChat"
 image_url = "https://github.com/YiwenC23/DSCI560-group_labs/raw/main/lab9/scripts/icon.png?raw=true"
 st.markdown(
     f"""

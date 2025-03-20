@@ -1,13 +1,15 @@
 ﻿import os
+import torch
 import faiss
 import ollama
 import getpass
 import numpy as np
 from openai import OpenAI
 from PyPDF2 import PdfReader
-from dotenv import load_dotenv
-from langchain.text_splitter import CharacterTextSplitter
+from chonkie import TokenChunker
+from chonkie.embeddings import SentenceTransformerEmbeddings
 
+torch.classes.__path__ = []
 
 #* Get the API key from the environment variable, ask for input if not found
 if not os.environ.get("OPENAI_API_KEY"):
@@ -26,13 +28,13 @@ def extract_pdf_text(pdf_docs):
 
 
 def chunk_text(text):
-    text_splitter = CharacterTextSplitter(
-        separator="\n",
-        chunk_size=500,
-        chunk_overlap=100,
-        length_function=len
+    chunker = TokenChunker(
+        tokenizer = "character",
+        chunk_size = 500,
+        chunk_overlap = 100,
+        return_type = "texts"
     )
-    chunks = text_splitter.split_text(text)
+    chunks = chunker.chunk(text)
     
     return chunks
 
@@ -50,6 +52,9 @@ def embed_text(text_chunks, emb_model):
             input = text_chunks
         )
         embeddings = response.embeddings
+    elif emb_model == "nomic-embed-text-v1.5":
+        model = SentenceTransformerEmbeddings("nomic-ai/nomic-embed-text-v1.5", trust_remote_code=True)
+        embeddings = model.embed(text_chunks)
     else:
         raise ValueError(f"Model {emb_model} not supported")
     
@@ -63,4 +68,3 @@ def create_vector_store(embeddings):
     vector_store.add(embeddings_array)
     
     return vector_store
-
