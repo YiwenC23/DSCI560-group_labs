@@ -15,7 +15,7 @@ load_dotenv()
 client = OpenAI()
 
 llm_model_list = ["gpt-4o-mini", "gemma3:27b-it-q4_K_M" ]
-emb_model_list = ["text-embedding-3-small", "nomic-embed-text"]
+emb_model_list = ["text-embedding-3-large", "nomic-embed-text"]
 
 llm_model = llm_model_list[0]
 emb_model = emb_model_list[0]

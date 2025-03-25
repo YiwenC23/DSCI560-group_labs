@@ -38,7 +38,7 @@ def chunk_text(text):
 
 
 def embed_text(text_chunks, emb_model):
-    if emb_model == "text-embedding-3-small":
+    if emb_model == "text-embedding-3-large":
         response = client.embeddings.create(
             input = text_chunks,
             model = emb_model
