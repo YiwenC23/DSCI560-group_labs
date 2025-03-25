@@ -14,7 +14,19 @@
 
 ## Installation
 
-Install the require Libraries:
+Install the Ollama on your local machine: https://ollama.com
+
+Open the terminal and execute the following commands to download the required open-source models:
+
+```bash
+# Download Embeding Model:
+ollama pull nomic-embed-text
+
+# Download Large Language Model:
+ollama run gemma3:27b-it-q4_K_M
+```
+
+Install the required Python Libraries:
 
 1. Install the `faiss` library:
 
@@ -57,7 +69,7 @@ pip install numpy
 Step 1. Execute the `app.py` script:
 
 ```bash
-python3 `app.py`
+python3 app.py
 ```
 
 Step 2. Open your browser and enter the following address:
