@@ -8,13 +8,17 @@ import uuid
 from dotenv import load_dotenv
 from chatbot import extract_pdf_text, chunk_text, embed_text, create_vector_store, conversation_chain
 
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 # Initialize OpenAI client
 load_dotenv()
 client = OpenAI()
 
-llm_models = ["gpt-4o-mini", "gemma3:27b-it-q4_K_M" ]
-emb_models = ["text-embedding-3-small", "nomic-embed-text"]
+llm_model_list = ["gpt-4o-mini", "gemma3:27b-it-q4_K_M" ]
+emb_model_list = ["text-embedding-3-small", "nomic-embed-text"]
+
+llm_model = llm_model_list[0]
+emb_model = emb_model_list[0]
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -119,7 +123,7 @@ def analyze():
         text_chunks = chunk_text(raw_text)
         
         # Step 3: Generate embeddings for text chunks
-        embeddings = embed_text(text_chunks, emb_models[0])
+        embeddings = embed_text(text_chunks, emb_model)
         
         # Step 4: Create vector store and store it in the app config
         vector_store = create_vector_store(embeddings)
@@ -176,8 +180,8 @@ def send_message():
                 text_chunks=text_chunks,
                 vector_store=vector_store,
                 chat_history=chain_chat_history,
-                emb_model=emb_models[0],
-                llm_model=llm_models[0]
+                emb_model=emb_model,
+                llm_model=llm_model
             )
             
             # Get response from conversation
